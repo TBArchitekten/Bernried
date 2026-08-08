@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>2401 Bernried · LPH 3 Planungsterminplan</title>
+<style>
+  :root{
+    --bg:#f3f3f1;
+    --panel:#ffffff;
+    --line:#e4e4e1;
+    --line-strong:#d5d5d1;
+    --text:#111111;
+    --muted:#6b6b6b;
+    --accent:#111111;
+    --row-h:38px;
+    --fixed-left-cols:573px;
+    --left-w:925px;
+    --col-vorgang:auto;
+    --cell-w:28px;
+    --header-h:92px;
+    --radius:0px;
+    --shadow:none;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--text);background:var(--bg)}
+  button,input,select{font:inherit}
+  button{cursor:pointer}
+  .app{height:100%;display:flex;flex-direction:column;min-width:1150px}
+  .topbar{
+    min-height:64px;background:#fff;color:var(--text);display:flex;align-items:center;justify-content:space-between;
+    gap:24px;padding:0 14px;border-bottom:1px solid var(--line);z-index:20
+  }
+  .brand{display:flex;align-items:center;min-width:auto}
+  .site-brand,.project-top-title{font-size:18px;font-weight:400;letter-spacing:0;color:var(--text);text-decoration:none}
+  .site-brand strong{font-weight:700}
+  .project-top-title{text-align:right;white-space:nowrap}
+  .projectbar{display:none}
+  .toolbar{
+    min-height:58px;background:var(--panel);display:flex;align-items:center;gap:10px;padding:12px 24px;
+    border-bottom:1px solid var(--line);z-index:15;flex-wrap:wrap
+  }
+  .btn{
+    border:1px solid var(--line-strong);background:#fff;color:var(--text);padding:8px 12px;border-radius:0;
+    display:inline-flex;align-items:center;gap:7px;white-space:nowrap
+  }
+  .btn:hover{background:#f5f5f3}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.danger{color:var(--text)}
+  .btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .toolbar .sep{width:1px;height:28px;background:var(--line);margin:0 5px}
+  .search{height:36px;width:220px;border:1px solid var(--line-strong);border-radius:0;padding:0 10px;background:#fff}
+  .toolbar label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .toggle{accent-color:#666}
+  .statusbar{
+    background:#fff;border-bottom:1px solid var(--line);display:flex;gap:20px;padding:8px 24px;font-size:12px;color:var(--muted);flex-wrap:wrap
+  }
+  .statusbar strong{color:var(--text)}
+  .workspace{flex:1;min-height:0;display:flex;position:relative}
+  .left{
+    width:var(--left-w);min-width:430px;max-width:1200px;background:#fff;border-right:1px solid var(--line-strong);
+    overflow:hidden;display:flex;flex-direction:column;position:relative;z-index:8
+  }
+  .splitter{position:absolute;left:calc(var(--left-w) - 3px);top:0;bottom:0;width:6px;cursor:col-resize;z-index:30}
+  .splitter:hover{background:rgba(17,17,17,.12)}
+  .left-head{
+    height:var(--header-h);min-height:var(--header-h);background:#fbfbfa;border-bottom:1px solid var(--line-strong);
+    display:grid;grid-template-columns:64px minmax(0,1fr) 115px 92px 92px 70px 140px;align-items:end;padding-right:18px
+  }
+  .left-head div{padding:0 8px 10px;font-size:11px;font-weight:650;color:#56606d;text-transform:uppercase;letter-spacing:.03em}
+  .left-scroll{overflow-y:auto;overflow-x:hidden;flex:1;scrollbar-gutter:stable;min-width:0}
+  .row{
+    height:var(--row-h);display:grid;grid-template-columns:64px minmax(0,1fr) 115px 92px 92px 70px 140px;
+    align-items:center;border-bottom:1px solid #edf0f3;font-size:12.5px;background:#fff
+  }
+  .row{width:100%;min-width:0}
+  .row:hover{background:#f6f6f4}
+  .row.group{background:#efefec;font-weight:700;border-bottom-color:#d8d8d4}
+  .row.selected{background:#f0f0ee}
+  .cell{padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .name-cell{display:flex;align-items:center;gap:7px}
+  .indent{display:inline-block;width:15px;flex:none}
+  .collapse{border:0;background:transparent;width:18px;height:18px;padding:0;font-size:12px;color:#59626d}
+  .wbs{font-variant-numeric:tabular-nums;color:#66707d}
+  .progress-cell{display:flex;align-items:center;gap:8px;justify-content:space-between;overflow:visible}
+  .duration-edit{
+    border:0;background:transparent;color:inherit;padding:4px 5px;border-radius:5px;
+    font-weight:650;cursor:text;min-width:48px;text-align:left
+  }
+  .duration-edit:hover{background:#efefec;color:#111}
+  .duration-input{
+    width:56px;height:28px;border:1px solid var(--accent);border-radius:5px;padding:2px 5px;
+    font-weight:650;background:#fff;color:var(--text)
+  }
+  .mini-progress{height:5px;background:#e5e7eb;border-radius:99px;flex:0 0 76px;overflow:hidden}
+  .mini-progress span{display:block;height:100%;background:var(--accent)}
+  .timeline-wrap{flex:1;min-width:0;overflow:auto;background:#fff;position:relative}
+  .timeline-content{position:relative;min-height:100%}
+  .timeline-head{height:var(--header-h);position:sticky;top:0;background:#fbfbfa;border-bottom:1px solid var(--line-strong);z-index:12}
+  .months,.weeks{height:31px;position:relative;border-bottom:1px solid var(--line)}
+  .days{height:30px;position:relative}
+  .head-block{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);font-size:11px;color:#59626d;overflow:hidden;white-space:nowrap}
+  .head-block.month{font-weight:700;color:#333;background:#f4f4f2}
+  .day-label{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;border-right:1px solid #e4e7eb;font-size:10px;color:#6c7580}
+  .day-label.weekend{background:#f1f3f5;color:#a0a6ad}
+  .timeline-body{position:relative}
+  .grid-row{position:absolute;left:0;right:0;height:var(--row-h);border-bottom:1px solid #edf0f3}
+  .grid-row.group{background:#f2f4f7}
+  .grid-day{position:absolute;top:0;bottom:0;border-right:1px solid #edf0f3}
+  .grid-day.weekend{background:#f7f7f8}
+  .today-line{position:absolute;top:0;width:2px;background:#ef4444;z-index:7;pointer-events:none}
+  .today-label{position:absolute;top:4px;transform:translateX(-50%);background:#ef4444;color:#fff;border-radius:4px;padding:2px 5px;font-size:9px;z-index:15}
+  .bar{
+    position:absolute;height:24px;border-radius:5px;top:7px;color:#fff;display:flex;align-items:center;z-index:6;
+    box-shadow:0 1px 2px rgba(0,0,0,.18);user-select:none;touch-action:none;min-width:8px;
+    cursor:grab;overflow:visible
+  }
+  .bar:hover{filter:brightness(.98);box-shadow:0 2px 7px rgba(0,0,0,.22)}
+  .bar:active{cursor:grabbing}
+  /* Kritische Vorgänge werden nur noch mit einem kleinen Marker gekennzeichnet.
+     Dadurch bleibt die eigentliche Kategorienfarbe vollständig sichtbar. */
+  .bar.critical::after{
+    content:"";position:absolute;right:-4px;top:-4px;width:8px;height:8px;border-radius:50%;
+    background:#dc2626;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.22);z-index:5;
+    pointer-events:none
+  }
+  .bar.summary{height:12px;top:13px;border-radius:2px;color:transparent;box-shadow:none;cursor:default;overflow:hidden}
+  .bar.summary::after{display:none}
+  .bar .bar-progress{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,.17);border-radius:5px 0 0 5px;pointer-events:none}
+  .bar .bar-label{position:relative;z-index:2;padding:0 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:650;pointer-events:none}
+  .handle{
+    position:absolute;top:3px;width:7px;height:18px;z-index:4;cursor:ew-resize;
+    background:rgba(255,255,255,.92);border:1px solid rgba(31,41,51,.35);border-radius:3px;
+    opacity:0;transition:opacity .12s
+  }
+  .bar:hover .handle{opacity:1}
+  .handle.left{left:-3px}.handle.right{right:-3px}
+  body.dragging,body.dragging *{user-select:none!important}
+  body.dragging .bar{cursor:grabbing}
+  .milestone{
+    position:absolute;width:18px;height:18px;transform:rotate(45deg);border-radius:2px;top:10px;z-index:7;
+    box-shadow:0 1px 3px rgba(0,0,0,.24);cursor:grab;touch-action:none
+  }
+  .milestone:active{cursor:grabbing}
+  .milestone.critical{box-shadow:0 1px 3px rgba(0,0,0,.24),0 0 0 2px rgba(220,38,38,.42)}
+  .milestone-label{position:absolute;top:10px;z-index:8;font-size:11px;font-weight:650;white-space:nowrap;pointer-events:none}
+  .deps{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;z-index:4}
+  .dep-path{fill:none;stroke:#858e99;stroke-width:1.4}
+  .dep-arrow{fill:#858e99}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .legend{display:flex;gap:14px;margin-left:auto;font-size:11px;color:#555;align-items:center;flex-wrap:wrap}
+  .legend span{display:flex;gap:6px;align-items:center}
+  .swatch-label{position:relative;display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;cursor:pointer}
+  .legend .dot{display:inline-block;width:14px;height:14px;border-radius:2px;cursor:pointer}
+  .legend .color-picker{position:absolute;inset:0;opacity:0;width:14px;height:14px;border:none;padding:0;cursor:pointer}
+  .legend .color-picker::-webkit-color-swatch-wrapper{padding:0}
+  .legend .color-picker::-webkit-color-swatch{border:none}
+  .legend .color-picker::-moz-color-swatch{border:none}
+  .dot{width:10px;height:10px;border-radius:2px}
+  dialog{
+    border:0;border-radius:12px;padding:0;width:min(720px,94vw);box-shadow:0 22px 65px rgba(0,0,0,.25)
+  }
+  dialog::backdrop{background:rgba(17,24,39,.48)}
+  .modal-head{padding:18px 21px;border-bottom:1px solid var(--line);display:flex;align-items:center}
+  .modal-head h2{font-size:17px;margin:0}
+  .modal-head button{margin-left:auto;border:0;background:transparent;font-size:22px}
+  .modal-body{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:12px;color:#5b6570;font-weight:650}
+  .field input,.field select,.field textarea{border:1px solid var(--line-strong);border-radius:7px;padding:9px;background:#fff}
+  .field textarea{min-height:70px;resize:vertical}
+  .modal-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  .context{
+    position:fixed;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:8px;padding:5px;
+    z-index:60;display:none;min-width:170px
+  }
+  .context button{display:block;width:100%;text-align:left;border:0;background:#fff;padding:8px 10px;border-radius:5px}
+  .context button:hover{background:#f2f4f7}
+  .toast{position:fixed;right:22px;bottom:22px;background:#111;color:#fff;padding:10px 14px;border-radius:0;opacity:0;transform:translateY(12px);transition:.2s;z-index:80;font-size:13px}
+  .toast.show{opacity:1;transform:translateY(0)}
+  #printSheet{display:none}
+
+  @page{
+    size:A3 landscape;
+    margin:8mm;
+  }
+
+  @media print{
+    html,body{
+      margin:0!important;
+      padding:0!important;
+      width:auto!important;
+      height:auto!important;
+      min-width:0!important;
+      overflow:visible!important;
+      background:#fff!important;
+      -webkit-print-color-adjust:exact!important;
+      print-color-adjust:exact!important;
+      forced-color-adjust:none!important;
+    }
+
+    .app,.context,.toast{display:none!important}
+    #printSheet{
+      display:block!important;
+      width:100%!important;
+      color:#111827!important;
+      font-family:Arial,Helvetica,sans-serif!important;
+      break-inside:avoid-page;
+      page-break-inside:avoid;
+    }
+
+    .print-title{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:8mm;
+      border-bottom:0.35mm solid #111827;
+      padding-bottom:2.5mm;
+      margin-bottom:3mm;
+    }
+    .print-title h1{
+      margin:0;
+      font-size:14pt;
+      line-height:1.1;
+      font-weight:700;
+    }
+    .print-title p{
+      margin:1mm 0 0;
+      font-size:7.5pt;
+      color:#4b5563;
+    }
+    .print-title-meta{
+      text-align:right;
+      font-size:7.5pt;
+      line-height:1.4;
+      white-space:nowrap;
+    }
+
+    .print-plan{
+      display:grid;
+      grid-template-columns:39% 61%;
+      width:100%;
+      border:0.25mm solid #9ca3af;
+      overflow:hidden;
+    }
+
+    .print-left,
+    .print-right{
+      min-width:0;
+    }
+    .print-left{
+      border-right:0.3mm solid #6b7280;
+    }
+
+    .print-left-head{
+      height:15mm;
+      display:grid;
+      grid-template-columns:8% 42% 17% 11% 11% 11%;
+      align-items:end;
+      border-bottom:0.3mm solid #6b7280;
+      background:#f3f4f6!important;
+    }
+    .print-left-head div{
+      padding:0 1.1mm 1.1mm;
+      font-size:5.8pt;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.02em;
+      overflow:hidden;
+      white-space:nowrap;
+    }
+
+    .print-left-row{
+      display:grid;
+      grid-template-columns:8% 42% 17% 11% 11% 11%;
+      align-items:center;
+      border-bottom:0.18mm solid #d1d5db;
+      overflow:hidden;
+    }
+    .print-left-row.group{
+      background:#e9edf2!important;
+      font-weight:700;
+    }
+    .print-left-row > div{
+      padding:0 1.1mm;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:5.8pt;
+      line-height:1;
+    }
+    .print-left-row .print-name{
+      padding-left:1.4mm;
+    }
+    .print-left-row.task .print-name{
+      padding-left:4mm;
+    }
+
+    .print-time-head{
+      height:15mm;
+      display:grid;
+      grid-template-rows:5mm 5mm 5mm;
+      border-bottom:0.3mm solid #6b7280;
+      background:#fff!important;
+    }
+    .print-grid-line{
+      display:grid;
+      width:100%;
+      min-width:0;
+    }
+    .print-head-cell{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-right:0.18mm solid #d1d5db;
+      border-bottom:0.18mm solid #d1d5db;
+      font-size:5.2pt;
+      line-height:1;
+      overflow:hidden;
+      white-space:nowrap;
+    }
+    .print-month-cell{
+      background:#f3f4f6!important;
+      font-weight:700;
+      font-size:6pt;
+    }
+    .print-week-cell{
+      background:#fafafa!important;
+      font-weight:600;
+    }
+    .print-day-cell{
+      font-size:4.8pt;
+      flex-direction:column;
+      gap:.35mm;
+    }
+    .print-day-cell.weekend{
+      background:#f1f3f5!important;
+    }
+
+    .print-svg{
+      display:block;
+      width:100%;
+      height:auto;
+      overflow:visible;
+      background:#fff;
+    }
+
+    .print-footer{
+      margin-top:2.5mm;
+      display:flex;
+      justify-content:space-between;
+      gap:8mm;
+      font-size:5.8pt;
+      color:#4b5563;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="site-brand">Titus Bernhard <strong>Architekten</strong></div>
+    </div>
+    <div class="project-top-title">2401 Bernried · Planungsterminplan</div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn primary" id="addTaskBtn">＋ Aufgabe</button>
+    <button class="btn" id="addMilestoneBtn">◆ Meilenstein</button>
+    <button class="btn" id="addGroupBtn">＋ Sammelvorgang</button>
+    <span class="sep"></span>
+    <button class="btn" data-zoom="day">Tag</button>
+    <button class="btn active" data-zoom="week">Woche</button>
+    <button class="btn" data-zoom="month">Monat</button>
+    <button class="btn" id="todayBtn">Heute</button>
+    <label><input class="toggle" type="checkbox" id="weekendToggle" checked> Wochenenden ausblenden</label>
+    <span class="sep"></span>
+    <input class="search" id="searchInput" placeholder="Vorgang suchen…" />
+    <button class="btn" id="exportCsvBtn">CSV</button>
+    <button class="btn" id="exportJsonBtn">JSON exportieren</button>
+    <button class="btn" id="importJsonBtn">JSON importieren</button>
+    <input type="file" id="jsonFile" accept=".json,application/json" hidden />
+    <button class="btn" id="printBtn">Drucken / PDF</button>
+    <button class="btn" id="resetBtn">Ausgangsstand</button>
+    <div class="legend">
+      <span><label class="swatch-label"><input class="color-picker" type="color" id="color-arch" title="Farbe Architektur"><i class="dot" id="legend-dot-arch"></i></label>Architektur</span>
+      <span><label class="swatch-label"><input class="color-picker" type="color" id="color-fach" title="Farbe Fachplanung"><i class="dot" id="legend-dot-fach"></i></label>Fachplanung</span>
+      <span><label class="swatch-label"><input class="color-picker" type="color" id="color-ag" title="Farbe AG / Freigabe"><i class="dot" id="legend-dot-ag"></i></label>AG / Freigabe</span>
+      <span><label class="swatch-label"><input class="color-picker" type="color" id="color-cost" title="Farbe Kosten / Abschluss"><i class="dot" id="legend-dot-cost"></i></label>Kosten / Abschluss</span>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span>Projektzeitraum LPH 3: <strong id="rangeLabel"></strong></span>
+    <span>Vorgänge: <strong id="taskCount"></strong></span>
+    <span>Meilensteine: <strong id="milestoneCount"></strong></span>
+  </div>
+
+  <main class="workspace">
+    <section class="left" id="leftPanel">
+      <div class="left-head">
+        <div>PSP</div><div>Vorgang</div><div>Verantwortlich</div><div>Anfang</div><div>Ende</div><div>Dauer</div><div>Fortschritt</div>
+      </div>
+      <div class="left-scroll" id="leftScroll"></div>
+    </section>
+    <div class="splitter" id="splitter"></div>
+    <section class="timeline-wrap" id="timelineWrap">
+      <div class="timeline-content" id="timelineContent">
+        <div class="timeline-head" id="timelineHead">
+          <div class="months" id="months"></div>
+          <div class="weeks" id="weeks"></div>
+          <div class="days" id="days"></div>
+        </div>
+        <div class="timeline-body" id="timelineBody"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<section id="printSheet" aria-hidden="true">
+  <div class="print-title">
+    <div>
+      <h1>2401 Bernried · Planungsterminplan LPH 3</h1>
+      <p>Entwurfsplanung · Koordination Fachplanung · Kostenberechnung · Abschluss</p>
+    </div>
+    <div class="print-title-meta" id="printTitleMeta"></div>
+  </div>
+
+  <div class="print-plan">
+    <div class="print-left">
+      <div class="print-left-head">
+        <div>PSP</div>
+        <div>Vorgang</div>
+        <div>Verantwortlich</div>
+        <div>Anfang</div>
+        <div>Ende</div>
+        <div>Dauer</div>
+      </div>
+      <div id="printLeftBody"></div>
+    </div>
+
+    <div class="print-right">
+      <div class="print-time-head">
+        <div class="print-grid-line" id="printMonths"></div>
+        <div class="print-grid-line" id="printWeeks"></div>
+        <div class="print-grid-line" id="printDays"></div>
+      </div>
+      <div id="printTimeline"></div>
+    </div>
+  </div>
+
+  <div class="print-footer">
+    <span>Arbeitstage Montag–Freitag · Regeltermine separat im Kalender / Besprechungsplan</span>
+    <span id="printFooterState"></span>
+  </div>
+</section>
+
+<dialog id="taskDialog">
+  <form method="dialog" id="taskForm">
+    <div class="modal-head">
+      <h2 id="modalTitle">Vorgang bearbeiten</h2>
+      <button value="cancel" aria-label="Schließen">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="taskId">
+      <div class="field full"><label>Vorgangsname</label><input id="taskName" required></div>
+      <div class="field"><label>Typ</label><select id="taskType"><option value="task">Aufgabe</option><option value="milestone">Meilenstein</option></select></div>
+      <div class="field"><label>Sammelvorgang</label><select id="taskGroup"></select></div>
+      <div class="field"><label>Anfang</label><input type="date" id="taskStart" required></div>
+      <div class="field"><label>Ende</label><input type="date" id="taskEnd" required></div>
+      <div class="field"><label>Verantwortlich</label><input id="taskOwner"></div>
+      <div class="field"><label>Fortschritt %</label><input type="number" id="taskProgress" min="0" max="100" step="5"></div>
+      <div class="field"><label>Kategorie</label>
+        <select id="taskCategory">
+          <option value="arch">Architektur</option>
+          <option value="fach">Fachplanung</option>
+          <option value="ag">Auftraggeber / Freigabe</option>
+          <option value="cost">Kosten / Abschluss</option>
+          <option value="qa">Koordination / QS</option>
+        </select>
+      </div>
+      <div class="field"><label>Vorgänger</label><select id="taskPred"><option value="">— keiner —</option></select></div>
+      <div class="field"><label>Status</label>
+        <select id="taskStatus"><option>Nicht begonnen</option><option>In Bearbeitung</option><option>Wartet auf Rückmeldung</option><option>Abgeschlossen</option></select>
+      </div>
+      <div class="field"><label><input type="checkbox" id="taskCritical"> Kritischer Vorgang</label></div>
+      <div class="field full"><label>Notiz / Lieferergebnis</label><textarea id="taskNote"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn danger" id="deleteTaskBtn">Löschen</button>
+      <button value="cancel" class="btn">Abbrechen</button>
+      <button type="button" class="btn primary" id="saveTaskBtn">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="groupDialog">
+  <form method="dialog">
+    <div class="modal-head"><h2>Sammelvorgang</h2><button value="cancel">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="groupId">
+      <div class="field"><label>PSP</label><input id="groupWbs" placeholder="10"></div>
+      <div class="field"><label>Kategorie</label>
+        <select id="groupCategory"><option value="arch">Architektur</option><option value="fach">Fachplanung</option><option value="ag">Auftraggeber / Freigabe</option><option value="cost">Kosten / Abschluss</option><option value="qa">Koordination / QS</option></select>
+      </div>
+      <div class="field full"><label>Bezeichnung</label><input id="groupName"></div>
+    </div>
+    <div class="modal-foot">
+      <button value="cancel" class="btn">Abbrechen</button>
+      <button type="button" class="btn primary" id="saveGroupBtn">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="context" id="contextMenu">
+  <button id="ctxEdit">Bearbeiten</button>
+  <button id="ctxDuplicate">Duplizieren</button>
+  <button id="ctxDelete">Löschen</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  const DEFAULT_COLORS = {arch:'#f28c28', fach:'#2589d8', ag:'#7c5cc4', cost:'#2f9e6f', qa:'#6b7280'};
+  const STORAGE_KEY = 'bernried_lph3_terminplan_v13';
+  const DAY_MS = 86400000;
+
+  const initialData = {
+    project:{name:'2401 Bernried · LPH 3', start:'2026-07-27', end:'2026-11-27'},
+    groups:[
+      {id:'g00',wbs:'00',name:'Projektorganisation, Termin- und Entscheidungsmanagement',category:'qa',collapsed:false},
+      {id:'g01',wbs:'01',name:'Erarbeiten der Entwurfsplanung Architektur · Arbeitsstand 01',category:'arch',collapsed:false},
+      {id:'g02',wbs:'02',name:'Erarbeiten der Fachplanungsbeiträge · Arbeitsstand 01',category:'fach',collapsed:false},
+      {id:'g03',wbs:'03',name:'Koordinieren und Integrieren der Fachplanungsbeiträge · Arbeitsstand 02',category:'qa',collapsed:false},
+      {id:'g04',wbs:'04',name:'Abstimmungen und Freigaben des Auftraggebers · Qualitätsfestlegungen',category:'ag',collapsed:false},
+      {id:'g05',wbs:'05',name:'Bereitstellen der abgestimmten Fachplanungsbeiträge LPH 3',category:'fach',collapsed:false},
+      {id:'g06',wbs:'06',name:'Kostenberechnung DIN 276 und Vergleich mit der Kostenschätzung',category:'cost',collapsed:false},
+      {id:'g07',wbs:'07',name:'Objektbeschreibung und Abstimmung der Genehmigungsfähigkeit',category:'arch',collapsed:false},
+      {id:'g08',wbs:'08',name:'Zusammenstellen und Dokumentieren der Ergebnisse LPH 3',category:'qa',collapsed:false},
+      {id:'g09',wbs:'09',name:'Übergabe und Freigabe LPH 3',category:'ag',collapsed:false}
+    ],
+    tasks:[
+      {id:'t001',group:'g00',name:'M00 · Projektauftakt mit Auftraggebern',start:'2026-07-27',end:'2026-07-27',owner:'Auftraggeber + Architektur',progress:100,category:'ag',status:'Abgeschlossen',pred:'',critical:true,type:'milestone',note:'Projektauftakt mit den Auftraggebern am 27.07.2026. Fachplaner waren zu diesem Zeitpunkt noch nicht beauftragt.'},
+      {id:'t002',group:'g00',name:'Planliste Architektur und Dokumentenstruktur aufstellen',start:'2026-07-28',end:'2026-08-06',owner:'Architektur',progress:75,category:'qa',status:'In Bearbeitung',pred:'t001',critical:false,note:'Planarten, Maßstäbe, Dateibenennung, Indizes, Austauschformate, Verantwortlichkeiten und Abgabestände definieren.'},
+      {id:'t004',group:'g00',name:'Vorläufige Planungs- und Schnittstellenmatrix erstellen',start:'2026-08-03',end:'2026-08-14',owner:'Architektur',progress:20,category:'qa',status:'In Bearbeitung',pred:'t001',critical:false,note:'Aus Sicht der Objektplanung die erwarteten Planungsbeiträge, Abhängigkeiten und Schnittstellen vorbereiten; vor Beauftragung der Fachplaner noch nicht abschließend.'},
+      {id:'t005',group:'g00',name:'Schnittstellenliste mit Fachplanern abstimmen und festschreiben',start:'2026-08-18',end:'2026-08-24',owner:'Architektur + Fachplaner',progress:0,category:'qa',status:'Nicht begonnen',pred:'mfp',critical:true,note:'Leistungsabgrenzungen, Informationsbedarfe, Austauschtermine und Verantwortlichkeiten mit den beauftragten Fachplanern abstimmen.'},
+
+      {id:'t010',group:'g01',name:'Grundrisse · Arbeitsstand 01 erarbeiten',start:'2026-07-28',end:'2026-08-07',owner:'Architektur',progress:55,category:'arch',status:'In Bearbeitung',pred:'t001',critical:true,note:'Grundrisse als belastbare Planungsgrundlage für die erste Einbindung der Fachplanung erarbeiten.'},
+      {id:'t011',group:'g01',name:'Schnitte · Arbeitsstand 01 erarbeiten',start:'2026-08-03',end:'2026-08-12',owner:'Architektur',progress:25,category:'arch',status:'In Bearbeitung',pred:'t010',critical:true,note:'Höhen, Ebenen, Treppen, Dach und wesentliche Bauteilaufbauten in den Schnitten darstellen.'},
+      {id:'t012',group:'g01',name:'Ansichten · Arbeitsstand 01 erarbeiten',start:'2026-08-03',end:'2026-08-12',owner:'Architektur',progress:20,category:'arch',status:'In Bearbeitung',pred:'t010',critical:false,note:'Fassaden, Öffnungen und Materialprinzipien konsistent zu Grundrissen und Schnitten darstellen.'},
+      {id:'t013',group:'g01',name:'Vollständigkeits- und Konsistenzprüfung · Arbeitsstand 01',start:'2026-08-10',end:'2026-08-14',owner:'Projektleitung',progress:0,category:'qa',status:'Nicht begonnen',pred:'t011',critical:true,note:'Planübergreifende Prüfung von Geometrie, Höhen, Benennung, Planstand und fachplanerrelevanten Grundlagen.'},
+      {id:'m01',group:'g01',name:'M01 · Planungsgrundlagen für Fachplaner bereitstellen',start:'2026-08-14',end:'2026-08-14',owner:'Projektleitung',progress:0,category:'arch',status:'Nicht begonnen',pred:'t013',critical:true,type:'milestone',note:'Formale Bereitstellung des Arbeitsstands 01 einschließlich Planliste, Planungs- und Schnittstellenmatrix sowie Rückmeldefrist. Abhängig von rechtzeitiger Beauftragung der Fachplaner.'},
+
+      {id:'mfp',group:'g02',name:'M02 · Kick-off Fachplaner (vorläufig)',start:'2026-08-17',end:'2026-08-17',owner:'Architektur + Fachplaner',progress:0,category:'fach',status:'Nicht begonnen',pred:'m01',critical:true,type:'milestone',note:'Vorläufiger Termin am 17.08.2026; abhängig von Beauftragung und Verfügbarkeit der erforderlichen Fachplaner.'},
+      {id:'t024',group:'g02',name:'Planungsgrundlagen prüfen und Rückfragen zusammenstellen',start:'2026-08-18',end:'2026-08-21',owner:'Fachplaner',progress:0,category:'fach',status:'Nicht begonnen',pred:'mfp',critical:true,note:'Planungsgrundlagen prüfen, fehlende Informationen benennen und fachplanerbezogene Rückfragen gebündelt übermitteln.'},
+      {id:'t020',group:'g02',name:'TWP · Fachplanungsbeitrag Arbeitsstand 01 erarbeiten',start:'2026-08-24',end:'2026-09-11',owner:'TWP',progress:0,category:'fach',status:'Nicht begonnen',pred:'t024',critical:true,note:'Tragwerkskonzept, Raster, Bauteilabmessungen, Öffnungen und konstruktive Anforderungen als Arbeitsstand 01 bereitstellen.'},
+      {id:'t021',group:'g02',name:'HLS · Fachplanungsbeitrag Arbeitsstand 01 erarbeiten',start:'2026-08-24',end:'2026-09-11',owner:'HLS',progress:0,category:'fach',status:'Nicht begonnen',pred:'t024',critical:true,note:'Anlagenkonzept, Technikflächen, Schächte, Haupttrassen und wesentliche Anlagenanforderungen als Arbeitsstand 01 bereitstellen.'},
+      {id:'t022',group:'g02',name:'ELT · Fachplanungsbeitrag Arbeitsstand 01 erarbeiten',start:'2026-08-24',end:'2026-09-11',owner:'ELT',progress:0,category:'fach',status:'Nicht begonnen',pred:'t024',critical:false,note:'Versorgungskonzept, Technikräume, Hauptverteilungen, Steigzonen und Trassen als Arbeitsstand 01 bereitstellen.'},
+      {id:'t023',group:'g02',name:'BRS · Fachplanungsbeitrag Arbeitsstand 01 erarbeiten',start:'2026-08-24',end:'2026-09-11',owner:'BRS',progress:0,category:'fach',status:'Nicht begonnen',pred:'t024',critical:true,note:'Brandschutzkonzept, Brandabschnitte, Rettungswege und Anforderungen an Bauteile als Arbeitsstand 01 bereitstellen.'},
+      {id:'mfp1',group:'g02',name:'M03 · Fachplanungsbeiträge Arbeitsstand 01 bereitstellen',start:'2026-09-11',end:'2026-09-11',owner:'Fachplaner',progress:0,category:'fach',status:'Nicht begonnen',pred:'t020',critical:true,type:'milestone',note:'Gemeinsamer Zieltermin für die Fachplanungsbeiträge Arbeitsstand 01. Die einzelnen Fachplaner müssen den Termin im Kick-off bestätigen oder begründet korrigieren.'},
+
+      {id:'t030',group:'g03',name:'Planungskoordination 01 · Schnittstellen und Abstimmungsbedarf',start:'2026-09-01',end:'2026-09-11',owner:'Architektur + Fachplaner',progress:0,category:'qa',status:'Nicht begonnen',pred:'t024',critical:true,note:'Fachplanungsstände prüfen, objektbestimmende Zusammenhänge koordinieren und Schnittstellen abstimmen. Beginn teilweise parallel zur laufenden Fachplanung.'},
+      {id:'t033',group:'g03',name:'Abstimmungsbedarf dokumentieren und Entscheidungspunkte zusammenstellen',start:'2026-09-08',end:'2026-09-18',owner:'Architektur',progress:0,category:'qa',status:'Nicht begonnen',pred:'t030',critical:true,note:'Offene Sachverhalte, Varianten, Auswirkungen auf Qualität, Kosten und Termine sowie erforderliche Auftraggeberentscheidungen strukturiert dokumentieren.'},
+      {id:'m02',group:'g03',name:'M04 · Entscheidungspunkte an Auftraggeber bereitstellen',start:'2026-09-18',end:'2026-09-18',owner:'Projektleitung',progress:0,category:'ag',status:'Nicht begonnen',pred:'t033',critical:true,type:'milestone',note:'Entscheidungsunterlage mit eindeutigen Fragestellungen, Empfehlungen, Auswirkungen und gewünschter Rückmeldefrist.'},
+      {id:'t031',group:'g03',name:'Entwurfsplanung Architektur · integrierten Arbeitsstand 02 erarbeiten',start:'2026-09-08',end:'2026-09-25',owner:'Architektur',progress:0,category:'arch',status:'Nicht begonnen',pred:'t030',critical:true,note:'Fachplanungsbeiträge in Grundrisse, Schnitte, Ansichten, Modell und Objektbeschreibung integrieren.'},
+      {id:'t032',group:'g03',name:'Koordination und Integration der Fachplanungsbeiträge · Runde 02',start:'2026-09-21',end:'2026-10-09',owner:'Projektteam',progress:0,category:'qa',status:'Nicht begonnen',pred:'t031',critical:true,note:'Zweite interdisziplinäre Abstimmung bis zum koordinierten und freigabefähigen Entwurfsstand.'},
+
+      {id:'t040',group:'g04',name:'Prüffrist Auftraggeber · Arbeitsstand 02',start:'2026-09-21',end:'2026-09-25',owner:'Auftraggeber',progress:0,category:'ag',status:'Nicht begonnen',pred:'m02',critical:true,note:'Abgestimmte Prüffrist für verbindliche Rückmeldungen zu den vorgelegten Entscheidungspunkten.'},
+      {id:'mag1',group:'g04',name:'M05 · Entscheidungsbesprechung Auftraggeber · Arbeitsstand 02',start:'2026-09-25',end:'2026-09-25',owner:'Auftraggeber + Architektur',progress:0,category:'ag',status:'Nicht begonnen',pred:'t040',critical:true,type:'milestone',note:'Entscheidungen zu den vorgelegten Varianten, Qualitäten, Kosten- und Terminfolgen dokumentieren und als verbindliche Planungsgrundlage festhalten.'},
+      {id:'t041',group:'g04',name:'Qualitätsfestlegungen und kostenrelevante Bemusterung abstimmen',start:'2026-09-28',end:'2026-10-09',owner:'Auftraggeber + Architektur',progress:0,category:'ag',status:'Nicht begonnen',pred:'mag1',critical:true,note:'Fassade, Fenster, Oberflächen, Sanitär- und weitere kostenrelevante Qualitätsstandards entscheidungsreif abstimmen.'},
+      {id:'m03',group:'g04',name:'M06 · Entwurfsstand LPH 3 durch Auftraggeber freigeben',start:'2026-10-09',end:'2026-10-09',owner:'Auftraggeber',progress:0,category:'ag',status:'Nicht begonnen',pred:'t041',critical:true,type:'milestone',note:'Freigabe des koordinierten Entwurfsstands als Grundlage für Kostenberechnung, Abschlussdokumentation und weitere Planung. Die zweite Koordinationsrunde muss ebenfalls abgeschlossen sein.'},
+
+      {id:'t050',group:'g05',name:'TWP · abgestimmten Fachplanungs- und Kostenbeitrag bereitstellen',start:'2026-10-05',end:'2026-10-23',owner:'TWP',progress:0,category:'fach',status:'Nicht begonnen',pred:'t032',critical:true,note:'Abgestimmter Fachplanungsbeitrag LPH 3 einschließlich kostenrelevanter Angaben und dokumentierter Schnittstellen.'},
+      {id:'t051',group:'g05',name:'HLS · abgestimmten Fachplanungs- und Kostenbeitrag bereitstellen',start:'2026-10-05',end:'2026-10-23',owner:'HLS',progress:0,category:'fach',status:'Nicht begonnen',pred:'t032',critical:true,note:'Abgestimmter Fachplanungsbeitrag LPH 3 einschließlich kostenrelevanter Angaben und dokumentierter Schnittstellen.'},
+      {id:'t052',group:'g05',name:'ELT · abgestimmten Fachplanungs- und Kostenbeitrag bereitstellen',start:'2026-10-05',end:'2026-10-23',owner:'ELT',progress:0,category:'fach',status:'Nicht begonnen',pred:'t032',critical:false,note:'Abgestimmter Fachplanungsbeitrag LPH 3 einschließlich kostenrelevanter Angaben und dokumentierter Schnittstellen.'},
+      {id:'t053',group:'g05',name:'BRS · abgestimmten Fachplanungsbeitrag bereitstellen',start:'2026-10-05',end:'2026-10-23',owner:'BRS',progress:0,category:'fach',status:'Nicht begonnen',pred:'t032',critical:true,note:'Abgestimmter Brandschutzbeitrag LPH 3 einschließlich der relevanten Anforderungen an die Objektplanung.'},
+      {id:'mfp2',group:'g05',name:'M07 · abgestimmte Fachplanungsbeiträge LPH 3 bereitstellen',start:'2026-10-23',end:'2026-10-23',owner:'Fachplaner',progress:0,category:'fach',status:'Nicht begonnen',pred:'t050',critical:true,type:'milestone',note:'Gemeinsamer Zieltermin für alle abgestimmten Fachplanungsbeiträge und Kostenangaben.'},
+
+      {id:'t060',group:'g06',name:'Mengenermittlung und Kostenbeiträge zusammenführen',start:'2026-10-05',end:'2026-10-23',owner:'Architektur + Fachplaner',progress:0,category:'cost',status:'Nicht begonnen',pred:'m03',critical:true,note:'Mengen, Qualitäten und Fachplanerkosten zusammenführen; Doppelansätze und Kostenlücken an den Schnittstellen vermeiden.'},
+      {id:'t061',group:'g06',name:'Kostenberechnung DIN 276 erstellen',start:'2026-10-19',end:'2026-11-06',owner:'Kostenplanung',progress:0,category:'cost',status:'Nicht begonnen',pred:'mfp2',critical:true,note:'Kostenberechnung auf Grundlage des koordinierten Entwurfs und der abgestimmten Fachplanungsbeiträge erstellen.'},
+      {id:'m04',group:'g06',name:'M08 · Kostenbesprechung · Kostenberechnung mit Kostenschätzung vergleichen',start:'2026-11-06',end:'2026-11-06',owner:'Projektleitung',progress:0,category:'cost',status:'Nicht begonnen',pred:'t061',critical:true,type:'milestone',note:'Abweichungen, Ursachen, Auswirkungen und erforderliche Maßnahmen transparent darstellen.'},
+      {id:'t062',group:'g06',name:'Kostenoptimierung und abgestimmte Korrekturen umsetzen',start:'2026-11-09',end:'2026-11-13',owner:'Projektteam',progress:0,category:'cost',status:'Nicht begonnen',pred:'m04',critical:true,note:'Nur mit Auftraggeber und Fachplanern abgestimmte Maßnahmen umsetzen und deren Planungs- und Kostenfolgen dokumentieren.'},
+
+      {id:'t070',group:'g07',name:'Objektbeschreibung · Arbeitsstand 01 erarbeiten',start:'2026-09-21',end:'2026-10-02',owner:'Architektur',progress:0,category:'arch',status:'Nicht begonnen',pred:'t031',critical:false,note:'Planungskonzept, Konstruktion, Materialien, technische Prinzipien und wesentliche Randbedingungen beschreiben.'},
+      {id:'t072',group:'g07',name:'Objektbeschreibung mit Fachplanungsbeiträgen fortschreiben',start:'2026-10-05',end:'2026-10-16',owner:'Architektur + Fachplaner',progress:0,category:'arch',status:'Nicht begonnen',pred:'t070',critical:false,note:'Objektbeschreibung um abgestimmte Beiträge der Fachplanung ergänzen und konsistent zum Planstand fortschreiben.'},
+      {id:'t071',group:'g07',name:'Genehmigungsfähigkeit und Behördenanforderungen prüfen',start:'2026-09-21',end:'2026-10-02',owner:'Architektur + BRS',progress:0,category:'qa',status:'Nicht begonnen',pred:'t031',critical:true,note:'Bauplanungs- und bauordnungsrechtliche Anforderungen sowie genehmigungsrelevante Risiken prüfen.'},
+      {id:'t073',group:'g07',name:'Offene genehmigungsrelevante Anforderungen abstimmen',start:'2026-10-05',end:'2026-10-16',owner:'Architektur + Beteiligte',progress:0,category:'qa',status:'Nicht begonnen',pred:'t071',critical:true,note:'Erforderliche Abstimmungen mit Auftraggeber, Brandschutz, Fachstellen oder Behörden vorbereiten und dokumentieren.'},
+
+      {id:'t080',group:'g08',name:'Abschlussunterlagen zusammenstellen und Ergebnisse dokumentieren',start:'2026-11-02',end:'2026-11-13',owner:'Architektur',progress:0,category:'arch',status:'Nicht begonnen',pred:'mfp2',critical:true,note:'Planstand, Objektbeschreibung, Kostenberechnung, Fachplanungsbeiträge, Terminplan und Anlagen zum vollständigen LPH-3-Paket zusammenführen.'},
+      {id:'t082',group:'g08',name:'Planliste, Indizes und Abgabeverzeichnis finalisieren',start:'2026-11-09',end:'2026-11-13',owner:'Architektur',progress:0,category:'qa',status:'Nicht begonnen',pred:'t080',critical:false,note:'Planbenennung, Indizes, Revisionsstände, Dateistruktur und Abgabeverzeichnis abschließend prüfen und festschreiben.'},
+      {id:'t081',group:'g08',name:'Vollständigkeits- und Konsistenzprüfung der Abschlussunterlagen',start:'2026-11-16',end:'2026-11-20',owner:'Projektleitung',progress:0,category:'qa',status:'Nicht begonnen',pred:'t080',critical:true,note:'Vollständigkeit, Konsistenz, Planindizes, Benennung, Kostenstand, Fachplanungsbeiträge und formale Abgabefähigkeit prüfen.'},
+      {id:'m05',group:'g08',name:'M09 · Interne Abgabe und Abschlussprüfung LPH 3',start:'2026-11-20',end:'2026-11-20',owner:'Projektleitung',progress:0,category:'qa',status:'Nicht begonnen',pred:'t081',critical:true,type:'milestone',note:'Interner Abschlussstand als kontrollierte Grundlage für die Auftraggeberprüfung und finale Übergabe.'},
+
+      {id:'t090',group:'g09',name:'Prüf-, Korrektur- und Reservezeit',start:'2026-11-23',end:'2026-11-26',owner:'Auftraggeber + Projektteam',progress:0,category:'qa',status:'Nicht begonnen',pred:'m05',critical:true,note:'Kontrollierter Zeitraum für Auftraggeberrückmeldung, freigegebene Schlusskorrekturen und unvorhergesehene Verzögerungen.'},
+      {id:'m06',group:'g09',name:'M10 · Abschlussbesprechung · Ergebnisse LPH 3 übergeben und erläutern',start:'2026-11-27',end:'2026-11-27',owner:'Projektleitung',progress:0,category:'cost',status:'Nicht begonnen',pred:'t090',critical:true,type:'milestone',note:'Vollständige Übergabe und Erläuterung der Ergebnisse der Entwurfsplanung einschließlich Kostenberechnung und fortgeschriebenem Terminplan.'},
+      {id:'m07',group:'g09',name:'M11 · Freigabe LPH 3 durch Auftraggeber (vorläufig)',start:'2026-11-27',end:'2026-11-27',owner:'Auftraggeber',progress:0,category:'ag',status:'Nicht begonnen',pred:'m06',critical:true,type:'milestone',note:'Vorläufige Terminannahme. Die formale Freigabe kann nur am 27.11. erfolgen, wenn Prüffrist, Entscheidungsumfang und Freigabeprozess zuvor verbindlich vereinbart wurden; andernfalls ist der Termin nach Auftraggeberabstimmung fortzuschreiben.'}
+    ]
+  };
+  let data = loadData();
+  let zoom = 'week';
+  let hideWeekends = true;
+  let cellWidth = 28;
+  let rows = [];
+  let visibleDates = [];
+  let contextId = null;
+  let selectedId = null;
+  let drag = null;
+  const UI_KEY = 'bernried_lph3_ui_v13';
+  let uiState = loadUIState();
+
+  const $ = s => document.querySelector(s);
+  const leftScroll = $('#leftScroll');
+  const timelineWrap = $('#timelineWrap');
+  const timelineBody = $('#timelineBody');
+  const timelineContent = $('#timelineContent');
+  const taskDialog = $('#taskDialog');
+  const groupDialog = $('#groupDialog');
+
+  function clone(o){return JSON.parse(JSON.stringify(o))}
+  function loadData(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : clone(initialData);
+    }catch(e){return clone(initialData)}
+  }
+  function saveData(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    $('#saveState').textContent='lokal gespeichert · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  function loadUIState(){
+    try{
+      const raw=localStorage.getItem(UI_KEY);
+      const saved=raw?JSON.parse(raw):{};
+      return {
+        leftWidth:Number(saved.leftWidth)||0,
+        colors:{...DEFAULT_COLORS,...(saved.colors||{})}
+      };
+    }catch(e){
+      return {leftWidth:0,colors:{...DEFAULT_COLORS}};
+    }
+  }
+
+  function saveUIState(){
+    localStorage.setItem(UI_KEY, JSON.stringify(uiState));
+  }
+
+  function applyUIState(){
+    const minLeft=853;
+    const leftWidth=Math.max(minLeft, Number(uiState.leftWidth)||925);
+    document.documentElement.style.setProperty('--left-w', Math.min(1200,leftWidth)+'px');
+
+    const colors={...DEFAULT_COLORS,...(uiState.colors||{})};
+    uiState.colors=colors;
+    ['arch','fach','ag','cost'].forEach(key=>{
+      const dot=$('#legend-dot-'+key);
+      const input=$('#color-'+key);
+      if(dot) dot.style.background=colors[key];
+      if(input) input.value=colors[key];
+    });
+  }
+  function parseDate(s){const [y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d))}
+  function fmtDate(s){return parseDate(s).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit',timeZone:'UTC'})}
+  function iso(d){return d.toISOString().slice(0,10)}
+  function addDays(s,n){const d=parseDate(s);d.setUTCDate(d.getUTCDate()+n);return iso(d)}
+  function dayDiff(a,b){return Math.round((parseDate(b)-parseDate(a))/DAY_MS)}
+  function isWeekend(s){const d=parseDate(s).getUTCDay();return d===0||d===6}
+  function workDuration(a,b){
+    let n=0,d=parseDate(a),end=parseDate(b);
+    while(d<=end){const wd=d.getUTCDay();if(wd!==0&&wd!==6)n++;d.setUTCDate(d.getUTCDate()+1)}
+    return n;
+  }
+
+  /* Rechnet eine manuell eingegebene Dauer in Arbeitstagen in einen
+     Endtermin um. Der Anfangstermin zählt als erster Arbeitstag. */
+  function endFromWorkdays(start,count){
+    count=Math.max(1,Math.round(Number(count)||1));
+    let d=parseDate(start);
+
+    /* Liegt der Anfang ausnahmsweise am Wochenende, beginnt die Zählung
+       am nächsten Montag. */
+    while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
+
+    let remaining=count-1;
+    while(remaining>0){
+      d.setUTCDate(d.getUTCDate()+1);
+      const wd=d.getUTCDay();
+      if(wd!==0&&wd!==6)remaining--;
+    }
+    return iso(d);
+  }
+  function dateRange(start,end){
+    const arr=[];let d=parseDate(start),e=parseDate(end);
+    while(d<=e){const s=iso(d);if(!hideWeekends||!isWeekend(s))arr.push(s);d.setUTCDate(d.getUTCDate()+1)}
+    return arr;
+  }
+  function nearestVisibleIndex(date){
+    let idx=visibleDates.indexOf(date);
+    if(idx>=0)return idx;
+    let d=parseDate(date);
+    for(let i=0;i<10;i++){d.setUTCDate(d.getUTCDate()+1);idx=visibleDates.indexOf(iso(d));if(idx>=0)return idx}
+    d=parseDate(date);
+    for(let i=0;i<10;i++){d.setUTCDate(d.getUTCDate()-1);idx=visibleDates.indexOf(iso(d));if(idx>=0)return idx}
+    return 0;
+  }
+  function shiftVisible(date,steps){
+    let idx=nearestVisibleIndex(date);
+    idx=Math.max(0,Math.min(visibleDates.length-1,idx+steps));
+    return visibleDates[idx];
+  }
+  function categoryColor(c){const colors={...DEFAULT_COLORS,...(uiState.colors||{})};return colors[c]||colors.qa}
+  function uid(prefix){return prefix+Math.random().toString(36).slice(2,9)}
+
+  function computeGroupRange(groupId){
+    const ts=data.tasks.filter(t=>t.group===groupId);
+    if(!ts.length)return null;
+    const starts=ts.map(t=>t.start).sort(), ends=ts.map(t=>t.end).sort();
+    const p=Math.round(ts.reduce((a,t)=>a+(Number(t.progress)||0),0)/ts.length);
+    return {start:starts[0],end:ends[ends.length-1],progress:p};
+  }
+
+  function rebuildRows(){
+    const q=$('#searchInput').value.trim().toLowerCase();
+    rows=[];
+    data.groups.sort((a,b)=>String(a.wbs).localeCompare(String(b.wbs),undefined,{numeric:true})).forEach(g=>{
+      const gt=data.tasks.filter(t=>t.group===g.id);
+      const matches=!q||g.name.toLowerCase().includes(q)||gt.some(t=>(t.name+' '+t.owner+' '+t.note).toLowerCase().includes(q));
+      if(!matches)return;
+      rows.push({kind:'group',...g});
+      if(!g.collapsed){
+        gt.filter(t=>!q||(t.name+' '+t.owner+' '+t.note).toLowerCase().includes(q)||g.name.toLowerCase().includes(q))
+          .sort((a,b)=>a.start.localeCompare(b.start)||a.name.localeCompare(b.name))
+          .forEach((t,i)=>rows.push({kind:'task',wbs:g.wbs+'.'+String(i+1).padStart(2,'0'),...t}));
+      }
+    });
+  }
+
+  function render(){
+    const projectStart=data.project.start, projectEnd=data.project.end;
+    visibleDates=dateRange(projectStart,projectEnd);
+    cellWidth=zoom==='day'?46:zoom==='week'?28:18;
+    document.documentElement.style.setProperty('--cell-w',cellWidth+'px');
+    rebuildRows();
+    renderHeader();
+    renderLeft();
+    renderTimeline();
+    renderStats();
+    saveData();
+  }
+
+  function renderHeader(){
+    const totalW=visibleDates.length*cellWidth;
+    timelineContent.style.width=totalW+'px';
+    $('#months').innerHTML='';$('#weeks').innerHTML='';$('#days').innerHTML='';
+    const monthGroups=[],weekGroups=[];
+    visibleDates.forEach((s,i)=>{
+      const d=parseDate(s);
+      const m=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');
+      const monday=new Date(d);const day=monday.getUTCDay()||7;monday.setUTCDate(monday.getUTCDate()-day+1);
+      const w=iso(monday);
+      if(!monthGroups.length||monthGroups.at(-1).key!==m)monthGroups.push({key:m,start:i,count:1,label:d.toLocaleDateString('de-DE',{month:'long',year:'numeric',timeZone:'UTC'})});
+      else monthGroups.at(-1).count++;
+      if(!weekGroups.length||weekGroups.at(-1).key!==w)weekGroups.push({key:w,start:i,count:1,label:'KW '+getISOWeek(d)});
+      else weekGroups.at(-1).count++;
+      const el=document.createElement('div');el.className='day-label'+(isWeekend(s)?' weekend':'');
+      el.style.left=(i*cellWidth)+'px';el.style.width=cellWidth+'px';
+      el.textContent=zoom==='month'?(d.getUTCDate()===1?d.getUTCDate():''):(zoom==='week'?d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',timeZone:'UTC'}):d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',timeZone:'UTC'}));
+      $('#days').appendChild(el);
+    });
+    monthGroups.forEach(g=>appendHead('#months',g,'month'));
+    weekGroups.forEach(g=>appendHead('#weeks',g,'week'));
+  }
+  function getISOWeek(d){
+    const date=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
+    const day=date.getUTCDay()||7;date.setUTCDate(date.getUTCDate()+4-day);
+    const y0=new Date(Date.UTC(date.getUTCFullYear(),0,1));
+    return Math.ceil((((date-y0)/DAY_MS)+1)/7);
+  }
+  function appendHead(sel,g,kind){
+    const el=document.createElement('div');el.className='head-block '+kind;
+    el.style.left=(g.start*cellWidth)+'px';el.style.width=(g.count*cellWidth)+'px';el.textContent=g.label;
+    $(sel).appendChild(el);
+  }
+
+  function renderLeft(){
+    leftScroll.innerHTML='';
+    rows.forEach(r=>{
+      const el=document.createElement('div');el.className='row '+r.kind+(selectedId===r.id?' selected':'');
+      if(r.kind==='group'){
+        const gr=computeGroupRange(r.id);
+        el.innerHTML=`
+          <div class="cell wbs">${r.wbs}</div>
+          <div class="cell name-cell" title="${esc(r.name)}"><button class="collapse" data-group="${r.id}">${r.collapsed?'▶':'▼'}</button>${esc(r.name)}</div>
+          <div class="cell">—</div>
+          <div class="cell">${gr?fmtDate(gr.start):'—'}</div>
+          <div class="cell">${gr?fmtDate(gr.end):'—'}</div>
+          <div class="cell">${gr?workDuration(gr.start,gr.end)+' AT':'—'}</div>
+          <div class="cell progress-cell">${gr?`<div class="mini-progress"><span style="width:${gr.progress}%"></span></div>${gr.progress}%`:'—'}</div>`;
+        el.ondblclick=()=>openGroup(r.id);
+      } else {
+        el.innerHTML=`
+          <div class="cell wbs">${r.wbs}</div>
+          <div class="cell name-cell" title="${esc(r.name)}"><span class="indent"></span>${r.type==='milestone'?'◆ ':''}${esc(r.name)}</div>
+          <div class="cell">${esc(r.owner||'—')}</div>
+          <div class="cell">${fmtDate(r.start)}</div>
+          <div class="cell">${fmtDate(r.end)}</div>
+          <div class="cell">${r.type==='milestone'
+            ? '0 AT'
+            : `<button class="duration-edit" data-duration-id="${r.id}" title="Arbeitstage direkt bearbeiten">${workDuration(r.start,r.end)} AT</button>`}</div>
+          <div class="cell progress-cell"><div class="mini-progress"><span style="width:${r.progress||0}%"></span></div>${r.progress||0}%</div>`;
+        el.onclick=()=>{selectedId=r.id;renderLeft()};
+        el.ondblclick=()=>openTask(r.id);
+        el.oncontextmenu=e=>showContext(e,r.id);
+      }
+      leftScroll.appendChild(el);
+    });
+    leftScroll.querySelectorAll('.collapse').forEach(b=>b.onclick=e=>{
+      e.stopPropagation();const g=data.groups.find(x=>x.id===b.dataset.group);g.collapsed=!g.collapsed;render();
+    });
+
+    leftScroll.querySelectorAll('.duration-edit').forEach(button=>{
+      button.addEventListener('click',event=>{
+        event.stopPropagation();
+        beginDurationEdit(button,button.dataset.durationId);
+      });
+      button.addEventListener('dblclick',event=>event.stopPropagation());
+    });
+  }
+
+  function beginDurationEdit(button,id){
+    const task=data.tasks.find(t=>t.id===id);
+    if(!task||task.type==='milestone')return;
+
+    const current=workDuration(task.start,task.end);
+    const input=document.createElement('input');
+    input.type='number';
+    input.min='1';
+    input.step='1';
+    input.value=current;
+    input.className='duration-input';
+    input.setAttribute('aria-label','Dauer in Arbeitstagen');
+    button.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed=false;
+
+    const commit=()=>{
+      if(committed)return;
+      committed=true;
+      const days=Math.max(1,Math.round(Number(input.value)||current));
+      task.end=endFromWorkdays(task.start,days);
+      render();
+      toast(`Dauer auf ${days} Arbeitstage gesetzt.`);
+    };
+
+    input.addEventListener('keydown',event=>{
+      if(event.key==='Enter'){
+        event.preventDefault();
+        commit();
+      }else if(event.key==='Escape'){
+        event.preventDefault();
+        committed=true;
+        renderLeft();
+      }
+    });
+    input.addEventListener('blur',commit,{once:true});
+    input.addEventListener('click',event=>event.stopPropagation());
+  }
+
+  function renderTimeline(){
+    const totalW=visibleDates.length*cellWidth;
+    const totalH=rows.length*parseInt(getComputedStyle(document.documentElement).getPropertyValue('--row-h'));
+    timelineBody.innerHTML='';
+    timelineBody.style.width=totalW+'px';timelineBody.style.height=totalH+'px';
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('class','deps');svg.setAttribute('width',totalW);svg.setAttribute('height',totalH);
+    timelineBody.appendChild(svg);
+
+    rows.forEach((r,rowIndex)=>{
+      const row=document.createElement('div');row.className='grid-row '+r.kind;row.style.top=(rowIndex*38)+'px';
+      visibleDates.forEach((s,i)=>{
+        const gd=document.createElement('div');gd.className='grid-day'+(isWeekend(s)?' weekend':'');gd.style.left=(i*cellWidth)+'px';gd.style.width=cellWidth+'px';row.appendChild(gd);
+      });
+      timelineBody.appendChild(row);
+      if(r.kind==='group'){
+        const gr=computeGroupRange(r.id);if(gr)makeBar({...r,...gr,type:'summary'},rowIndex,true);
+      }else makeBar(r,rowIndex,false);
+    });
+    drawDependencies(svg);
+
+    const today=iso(new Date());
+    if(visibleDates.includes(today)){
+      const x=visibleDates.indexOf(today)*cellWidth+cellWidth/2;
+      const line=document.createElement('div');line.className='today-line';line.style.left=x+'px';line.style.height=(totalH+92)+'px';line.style.top='-92px';
+      const label=document.createElement('div');label.className='today-label';label.style.left=x+'px';label.style.top='-88px';label.textContent='HEUTE';
+      timelineBody.append(line,label);
+    }
+  }
+
+  function makeBar(t,rowIndex,isSummary){
+    const startIdx=nearestVisibleIndex(t.start), endIdx=nearestVisibleIndex(t.end);
+    const left=startIdx*cellWidth+3, width=Math.max(cellWidth-6,(endIdx-startIdx+1)*cellWidth-6);
+    if(t.type==='milestone'&&!isSummary){
+      const m=document.createElement('div');m.className='milestone'+(t.critical?' critical':'');m.style.left=(left+cellWidth/2-9)+'px';m.style.top=(rowIndex*38+10)+'px';m.style.background=categoryColor(t.category);m.dataset.id=t.id;m.title=t.name;
+      const lab=document.createElement('div');lab.className='milestone-label';lab.style.left=(left+cellWidth/2+14)+'px';lab.style.top=(rowIndex*38+10)+'px';lab.textContent=t.name;lab.title=t.name;
+      m.ondblclick=()=>openTask(t.id);m.oncontextmenu=e=>showContext(e,t.id);m.onpointerdown=e=>startDrag(e,t,'move');
+      timelineBody.append(m,lab);return;
+    }
+    const bar=document.createElement('div');bar.className='bar'+(isSummary?' summary':'')+(t.critical&&!isSummary?' critical':'');
+    bar.style.left=left+'px';bar.style.width=width+'px';bar.style.top=(rowIndex*38+(isSummary?13:7))+'px';bar.style.background=categoryColor(t.category);bar.dataset.id=t.id;bar.title=t.name;
+    bar.innerHTML=`<div class="bar-progress" style="width:${t.progress||0}%"></div><span class="bar-label">${esc(t.name)}</span>${isSummary?'':'<i class="handle left"></i><i class="handle right"></i>'}`;
+    if(!isSummary){
+      bar.ondblclick=()=>openTask(t.id);bar.oncontextmenu=e=>showContext(e,t.id);
+      bar.onpointerdown=e=>{
+        if(e.target.classList.contains('left'))startDrag(e,t,'resize-left');
+        else if(e.target.classList.contains('right'))startDrag(e,t,'resize-right');
+        else startDrag(e,t,'move');
+      };
+    }
+    timelineBody.appendChild(bar);
+  }
+
+  function drawDependencies(svg){
+    const taskRows=new Map();rows.forEach((r,i)=>{if(r.kind==='task')taskRows.set(r.id,i)});
+    data.tasks.forEach(t=>{
+      if(!t.pred||!taskRows.has(t.id)||!taskRows.has(t.pred))return;
+      const p=data.tasks.find(x=>x.id===t.pred);if(!p)return;
+      const pEnd=(nearestVisibleIndex(p.end)+1)*cellWidth-3;
+      const tStart=nearestVisibleIndex(t.start)*cellWidth+3;
+      const y1=taskRows.get(p.id)*38+19,y2=taskRows.get(t.id)*38+19;
+      const elbow=Math.max(pEnd+12,(pEnd+tStart)/2);
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('class','dep-path');path.setAttribute('d',`M ${pEnd} ${y1} H ${elbow} V ${y2} H ${tStart-6}`);
+      const arrow=document.createElementNS('http://www.w3.org/2000/svg','path');
+      arrow.setAttribute('class','dep-arrow');arrow.setAttribute('d',`M ${tStart-6} ${y2-4} L ${tStart} ${y2} L ${tStart-6} ${y2+4} Z`);
+      svg.append(path,arrow);
+    });
+  }
+
+  function startDrag(e,t,mode){
+    e.preventDefault();e.stopPropagation();
+    const task=data.tasks.find(x=>x.id===t.id);if(!task)return;
+
+    drag={
+      id:t.id,
+      mode,
+      startX:e.clientX,
+      origStart:task.start,
+      origEnd:task.end,
+      lastSteps:null,
+      moved:false
+    };
+
+    document.body.classList.add('dragging');
+
+    /* Los listeners viven en window. Así el arrastre continúa aunque la barra
+       se vuelva a dibujar durante el movimiento. */
+    window.addEventListener('pointermove',onDrag,{passive:false});
+    window.addEventListener('pointerup',endDrag,{passive:false});
+    window.addEventListener('pointercancel',endDrag,{passive:false});
+  }
+
+  function onDrag(e){
+    if(!drag)return;
+    e.preventDefault();
+
+    const steps=Math.round((e.clientX-drag.startX)/cellWidth);
+    if(steps===drag.lastSteps)return;
+    drag.lastSteps=steps;
+    drag.moved=drag.moved||steps!==0;
+
+    const task=data.tasks.find(x=>x.id===drag.id);if(!task)return;
+
+    if(drag.mode==='move'){
+      const durationVisible=nearestVisibleIndex(drag.origEnd)-nearestVisibleIndex(drag.origStart);
+      task.start=shiftVisible(drag.origStart,steps);
+      task.end=shiftVisible(task.start,durationVisible);
+      if(task.type==='milestone')task.end=task.start;
+    }else if(drag.mode==='resize-left'){
+      const candidate=shiftVisible(drag.origStart,steps);
+      if(nearestVisibleIndex(candidate)<=nearestVisibleIndex(drag.origEnd)){
+        task.start=candidate;
+        task.end=drag.origEnd;
+      }
+    }else if(drag.mode==='resize-right'){
+      const candidate=shiftVisible(drag.origEnd,steps);
+      if(nearestVisibleIndex(candidate)>=nearestVisibleIndex(drag.origStart)){
+        task.start=drag.origStart;
+        task.end=candidate;
+      }
+    }
+
+    renderLeft();
+    renderTimeline();
+    renderStats();
+  }
+
+  function endDrag(e){
+    if(!drag)return;
+    if(e)e.preventDefault();
+
+    window.removeEventListener('pointermove',onDrag);
+    window.removeEventListener('pointerup',endDrag);
+    window.removeEventListener('pointercancel',endDrag);
+    document.body.classList.remove('dragging');
+
+    const wasMoved=drag.moved;
+    drag=null;
+    render();
+    if(wasMoved)toast('Termin aktualisiert.');
+  }
+
+  function renderStats(){
+    $('#rangeLabel').textContent=fmtDate(data.project.start)+' – '+fmtDate(data.project.end);
+    $('#taskCount').textContent=data.tasks.filter(t=>t.type!=='milestone').length;
+    $('#milestoneCount').textContent=data.tasks.filter(t=>t.type==='milestone').length;
+  }
+
+  function openTask(id=null,type='task'){
+    const t=id?data.tasks.find(x=>x.id===id):null;
+    $('#modalTitle').textContent=t?'Vorgang bearbeiten':(type==='milestone'?'Meilenstein anlegen':'Aufgabe anlegen');
+    $('#taskId').value=t?.id||'';
+    $('#taskName').value=t?.name||'';
+    $('#taskType').value=t?.type||type;
+    populateGroups(t?.group);
+    $('#taskStart').value=t?.start||data.project.start;
+    $('#taskEnd').value=t?.end||data.project.start;
+    $('#taskOwner').value=t?.owner||'';
+    $('#taskProgress').value=t?.progress||0;
+    $('#taskCategory').value=t?.category||'arch';
+    populatePreds(t?.pred,id);
+    $('#taskStatus').value=t?.status||'Nicht begonnen';
+    $('#taskCritical').checked=!!t?.critical;
+    $('#taskNote').value=t?.note||'';
+    $('#deleteTaskBtn').style.visibility=t?'visible':'hidden';
+    taskDialog.showModal();
+  }
+  function populateGroups(selected){
+    const sel=$('#taskGroup');sel.innerHTML='';
+    data.groups.forEach(g=>{const o=new Option(g.wbs+' · '+g.name,g.id);if(g.id===selected)o.selected=true;sel.add(o)});
+  }
+  function populatePreds(selected,currentId){
+    const sel=$('#taskPred');sel.innerHTML='<option value="">— keiner —</option>';
+    data.tasks.filter(t=>t.id!==currentId).sort((a,b)=>a.start.localeCompare(b.start)).forEach(t=>{const o=new Option(t.name,t.id);if(t.id===selected)o.selected=true;sel.add(o)});
+  }
+  function saveTask(){
+    const id=$('#taskId').value||uid('t');
+    const type=$('#taskType').value;
+    const obj={
+      id,group:$('#taskGroup').value,name:$('#taskName').value.trim(),type,
+      start:$('#taskStart').value,end:type==='milestone'?$('#taskStart').value:$('#taskEnd').value,
+      owner:$('#taskOwner').value.trim(),progress:Number($('#taskProgress').value)||0,category:$('#taskCategory').value,
+      pred:$('#taskPred').value,status:$('#taskStatus').value,critical:$('#taskCritical').checked,note:$('#taskNote').value.trim()
+    };
+    if(!obj.name||!obj.start||!obj.end){toast('Name und Termine sind erforderlich.');return}
+    if(obj.end<obj.start){toast('Der Endtermin liegt vor dem Anfangstermin.');return}
+    const idx=data.tasks.findIndex(t=>t.id===id);if(idx>=0)data.tasks[idx]=obj;else data.tasks.push(obj);
+    taskDialog.close();render();toast('Vorgang gespeichert.');
+  }
+  function deleteTask(id=$('#taskId').value){
+    if(!id)return;
+    const t=data.tasks.find(x=>x.id===id);if(!t)return;
+    if(!confirm(`„${t.name}“ wirklich löschen?`))return;
+    data.tasks=data.tasks.filter(x=>x.id!==id);data.tasks.forEach(x=>{if(x.pred===id)x.pred=''});
+    taskDialog.close();hideContext();render();toast('Vorgang gelöscht.');
+  }
+  function duplicateTask(id){
+    const t=data.tasks.find(x=>x.id===id);if(!t)return;
+    const c=clone(t);c.id=uid('t');c.name=t.name+' · Kopie';c.start=addDays(t.start,1);c.end=addDays(t.end,1);c.pred='';
+    data.tasks.push(c);render();toast('Vorgang dupliziert.');
+  }
+
+  function openGroup(id=null){
+    const g=id?data.groups.find(x=>x.id===id):null;
+    $('#groupId').value=g?.id||'';$('#groupWbs').value=g?.wbs||String(data.groups.length).padStart(2,'0');
+    $('#groupName').value=g?.name||'';$('#groupCategory').value=g?.category||'qa';groupDialog.showModal();
+  }
+  function saveGroup(){
+    const id=$('#groupId').value||uid('g');
+    const obj={id,wbs:$('#groupWbs').value.trim(),name:$('#groupName').value.trim(),category:$('#groupCategory').value,collapsed:false};
+    if(!obj.name){toast('Bezeichnung ist erforderlich.');return}
+    const idx=data.groups.findIndex(g=>g.id===id);if(idx>=0)obj.collapsed=data.groups[idx].collapsed,data.groups[idx]=obj;else data.groups.push(obj);
+    groupDialog.close();render();toast('Sammelvorgang gespeichert.');
+  }
+
+  function showContext(e,id){e.preventDefault();contextId=id;const m=$('#contextMenu');m.style.display='block';m.style.left=e.clientX+'px';m.style.top=e.clientY+'px'}
+  function hideContext(){$('#contextMenu').style.display='none';contextId=null}
+  function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
+  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+
+  function buildPrintRows(){
+    const printRows=[];
+    data.groups
+      .slice()
+      .sort((a,b)=>String(a.wbs).localeCompare(String(b.wbs),undefined,{numeric:true}))
+      .forEach(group=>{
+        printRows.push({kind:'group',...group});
+        data.tasks
+          .filter(task=>task.group===group.id)
+          .sort((a,b)=>a.start.localeCompare(b.start)||a.name.localeCompare(b.name))
+          .forEach((task,index)=>{
+            printRows.push({
+              kind:'task',
+              wbs:group.wbs+'.'+String(index+1).padStart(2,'0'),
+              ...task
+            });
+          });
+      });
+    return printRows;
+  }
+
+  function buildPrintSheet(){
+    const printRows=buildPrintRows();
+    const printDates=dateRange(data.project.start,data.project.end);
+    const rowHeight=printRows.length>50?14:17;
+    const totalHeight=printRows.length*rowHeight;
+    const totalDays=Math.max(1,printDates.length);
+    const svgWidth=1200;
+    const dayWidth=svgWidth/totalDays;
+
+    $('#printTitleMeta').innerHTML=
+      `<strong>Projektzeitraum</strong> ${fmtDate(data.project.start)} – ${fmtDate(data.project.end)}<br>`+
+      `<strong>Externe Abgabe</strong> ${fmtDate(data.project.end)} · <strong>Stand</strong> ${new Date().toLocaleDateString('de-DE')}`;
+
+    $('#printFooterState').textContent=
+      `${data.tasks.filter(t=>t.type!=='milestone').length} Vorgänge · `+
+      `${data.tasks.filter(t=>t.type==='milestone').length} Meilensteine`;
+
+    const leftBody=$('#printLeftBody');
+    leftBody.innerHTML='';
+
+    printRows.forEach(row=>{
+      const line=document.createElement('div');
+      line.className='print-left-row '+row.kind;
+      line.style.height=rowHeight+'px';
+
+      if(row.kind==='group'){
+        const range=computeGroupRange(row.id);
+        line.innerHTML=
+          `<div>${esc(row.wbs)}</div>`+
+          `<div class="print-name">▾ ${esc(row.name)}</div>`+
+          `<div>—</div>`+
+          `<div>${range?fmtDate(range.start):'—'}</div>`+
+          `<div>${range?fmtDate(range.end):'—'}</div>`+
+          `<div>${range?workDuration(range.start,range.end)+' AT':'—'}</div>`;
+      }else{
+        line.innerHTML=
+          `<div>${esc(row.wbs)}</div>`+
+          `<div class="print-name">${row.type==='milestone'?'◆ ':''}${esc(row.name)}</div>`+
+          `<div>${esc(row.owner||'—')}</div>`+
+          `<div>${fmtDate(row.start)}</div>`+
+          `<div>${fmtDate(row.end)}</div>`+
+          `<div>${row.type==='milestone'?'0 AT':workDuration(row.start,row.end)+' AT'}</div>`;
+      }
+      leftBody.appendChild(line);
+    });
+
+    buildPrintHeader(printDates);
+
+    const ns='http://www.w3.org/2000/svg';
+    const svg=document.createElementNS(ns,'svg');
+    svg.setAttribute('class','print-svg');
+    svg.setAttribute('viewBox',`0 0 ${svgWidth} ${totalHeight}`);
+    svg.setAttribute('preserveAspectRatio','none');
+    svg.setAttribute('role','img');
+    svg.setAttribute('aria-label','Gantt-Diagramm des Planungsterminplans LPH 3');
+    svg.style.height=totalHeight+'px';
+
+    const append=(name,attrs,parent=svg)=>{
+      const el=document.createElementNS(ns,name);
+      Object.entries(attrs||{}).forEach(([key,value])=>el.setAttribute(key,String(value)));
+      parent.appendChild(el);
+      return el;
+    };
+
+    const defs=append('defs');
+    const marker=append('marker',{
+      id:'printArrow',
+      markerWidth:7,
+      markerHeight:7,
+      refX:6,
+      refY:3.5,
+      orient:'auto',
+      markerUnits:'strokeWidth'
+    },defs);
+    append('path',{d:'M0,0 L7,3.5 L0,7 z',fill:'#7b8490'},marker);
+
+    printRows.forEach((row,rowIndex)=>{
+      const y=rowIndex*rowHeight;
+
+      if(row.kind==='group'){
+        append('rect',{
+          x:0,y,width:svgWidth,height:rowHeight,
+          fill:'#e9edf2'
+        });
+      }
+
+      append('line',{
+        x1:0,y1:y+rowHeight,
+        x2:svgWidth,y2:y+rowHeight,
+        stroke:'#d1d5db',
+        'stroke-width':0.7
+      });
+    });
+
+    printDates.forEach((date,index)=>{
+      const x=index*dayWidth;
+      if(isWeekend(date)){
+        append('rect',{
+          x,y:0,width:dayWidth,height:totalHeight,
+          fill:'#f2f3f5'
+        });
+      }
+      append('line',{
+        x1:x,y1:0,x2:x,y2:totalHeight,
+        stroke:'#d9dde3',
+        'stroke-width':0.55
+      });
+    });
+    append('line',{
+      x1:svgWidth,y1:0,x2:svgWidth,y2:totalHeight,
+      stroke:'#d9dde3','stroke-width':0.55
+    });
+
+    const rowByTask=new Map();
+    printRows.forEach((row,index)=>{
+      if(row.kind==='task')rowByTask.set(row.id,index);
+    });
+
+    const indexForDate=date=>{
+      const exact=printDates.indexOf(date);
+      if(exact>=0)return exact;
+
+      let cursor=parseDate(date);
+      for(let i=0;i<10;i++){
+        cursor.setUTCDate(cursor.getUTCDate()+1);
+        const forward=printDates.indexOf(iso(cursor));
+        if(forward>=0)return forward;
+      }
+
+      cursor=parseDate(date);
+      for(let i=0;i<10;i++){
+        cursor.setUTCDate(cursor.getUTCDate()-1);
+        const backward=printDates.indexOf(iso(cursor));
+        if(backward>=0)return backward;
+      }
+      return 0;
+    };
+
+    data.tasks.forEach(task=>{
+      if(!task.pred||!rowByTask.has(task.id)||!rowByTask.has(task.pred))return;
+      const predecessor=data.tasks.find(item=>item.id===task.pred);
+      if(!predecessor)return;
+
+      const predRow=rowByTask.get(predecessor.id);
+      const taskRow=rowByTask.get(task.id);
+      const x1=(indexForDate(predecessor.end)+1)*dayWidth;
+      const x2=indexForDate(task.start)*dayWidth;
+      const y1=predRow*rowHeight+rowHeight/2;
+      const y2=taskRow*rowHeight+rowHeight/2;
+      const elbow=Math.max(x1+7,(x1+x2)/2);
+
+      append('path',{
+        d:`M ${x1} ${y1} H ${elbow} V ${y2} H ${Math.max(x2-2,elbow)}`,
+        fill:'none',
+        stroke:'#7b8490',
+        'stroke-width':1,
+        'marker-end':'url(#printArrow)'
+      });
+    });
+
+    printRows.forEach((row,rowIndex)=>{
+      const y=rowIndex*rowHeight;
+
+      if(row.kind==='group'){
+        const range=computeGroupRange(row.id);
+        if(!range)return;
+        const start=indexForDate(range.start);
+        const end=indexForDate(range.end);
+        append('rect',{
+          x:start*dayWidth+1.2,
+          y:y+rowHeight/2-2.6,
+          width:Math.max(3,(end-start+1)*dayWidth-2.4),
+          height:5.2,
+          rx:1.2,
+          fill:categoryColor(row.category)
+        });
+        return;
+      }
+
+      const start=indexForDate(row.start);
+      const end=indexForDate(row.end);
+      const color=categoryColor(row.category);
+
+      if(row.type==='milestone'){
+        const cx=(start+.5)*dayWidth;
+        const cy=y+rowHeight/2;
+        const size=5.5;
+        append('polygon',{
+          points:`${cx},${cy-size} ${cx+size},${cy} ${cx},${cy+size} ${cx-size},${cy}`,
+          fill:color,
+          stroke:row.critical?'#dc2626':'#4b5563',
+          'stroke-width':row.critical?1.4:.75
+        });
+        const label=append('text',{
+          x:cx+7.5,
+          y:cy+2.3,
+          fill:'#111827',
+          'font-size':6.2,
+          'font-family':'Arial, Helvetica, sans-serif',
+          'font-weight':600
+        });
+        label.textContent=row.name;
+        return;
+      }
+
+      const x=start*dayWidth+1.3;
+      const width=Math.max(3,(end-start+1)*dayWidth-2.6);
+      const barY=y+3.5;
+      const barH=10;
+
+      append('rect',{
+        x,y:barY,width,height:barH,rx:1.5,
+        fill:color,
+        stroke:color,
+        'stroke-width':.5
+      });
+
+      const progress=Math.max(0,Math.min(100,Number(row.progress)||0));
+      if(progress>0){
+        append('rect',{
+          x,y:barY,width:width*(progress/100),height:barH,rx:1.5,
+          fill:'#111827',
+          opacity:.16
+        });
+      }
+
+      if(row.critical){
+        append('circle',{
+          cx:x+width-1.3,
+          cy:barY+1.3,
+          r:2.2,
+          fill:'#dc2626',
+          stroke:'#ffffff',
+          'stroke-width':.8
+        });
+      }
+
+      if(width>45){
+        const label=append('text',{
+          x:x+3,
+          y:barY+7.2,
+          fill:'#ffffff',
+          'font-size':5.8,
+          'font-family':'Arial, Helvetica, sans-serif',
+          'font-weight':600
+        });
+        label.textContent=row.name.length>42?row.name.slice(0,41)+'…':row.name;
+      }
+    });
+
+    const today=iso(new Date());
+    const todayIndex=printDates.indexOf(today);
+    if(todayIndex>=0){
+      const x=(todayIndex+.5)*dayWidth;
+      append('line',{
+        x1:x,y1:0,x2:x,y2:totalHeight,
+        stroke:'#ef4444',
+        'stroke-width':1.15
+      });
+    }
+
+    const timeline=$('#printTimeline');
+    timeline.innerHTML='';
+    timeline.appendChild(svg);
+  }
+
+  function buildPrintHeader(printDates){
+    const totalDays=Math.max(1,printDates.length);
+    const monthGroups=[];
+    const weekGroups=[];
+
+    printDates.forEach((date,index)=>{
+      const d=parseDate(date);
+      const monthKey=d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');
+      const monday=new Date(d);
+      const day=monday.getUTCDay()||7;
+      monday.setUTCDate(monday.getUTCDate()-day+1);
+      const weekKey=iso(monday);
+
+      if(!monthGroups.length||monthGroups.at(-1).key!==monthKey){
+        monthGroups.push({
+          key:monthKey,
+          start:index,
+          count:1,
+          label:d.toLocaleDateString('de-DE',{month:'long',year:'numeric',timeZone:'UTC'})
+        });
+      }else{
+        monthGroups.at(-1).count++;
+      }
+
+      if(!weekGroups.length||weekGroups.at(-1).key!==weekKey){
+        weekGroups.push({
+          key:weekKey,
+          start:index,
+          count:1,
+          label:'KW '+getISOWeek(d)
+        });
+      }else{
+        weekGroups.at(-1).count++;
+      }
+    });
+
+    const months=$('#printMonths');
+    const weeks=$('#printWeeks');
+    const days=$('#printDays');
+    months.innerHTML='';
+    weeks.innerHTML='';
+    days.innerHTML='';
+
+    [months,weeks,days].forEach(line=>{
+      line.style.gridTemplateColumns=`repeat(${totalDays}, minmax(0, 1fr))`;
+    });
+
+    monthGroups.forEach(group=>{
+      const cell=document.createElement('div');
+      cell.className='print-head-cell print-month-cell';
+      cell.style.gridColumn=`${group.start+1} / span ${group.count}`;
+      cell.textContent=group.label;
+      months.appendChild(cell);
+    });
+
+    weekGroups.forEach(group=>{
+      const cell=document.createElement('div');
+      cell.className='print-head-cell print-week-cell';
+      cell.style.gridColumn=`${group.start+1} / span ${group.count}`;
+      cell.textContent=group.label;
+      weeks.appendChild(cell);
+    });
+
+    printDates.forEach((date,index)=>{
+      const d=parseDate(date);
+      const cell=document.createElement('div');
+      cell.className='print-head-cell print-day-cell'+(isWeekend(date)?' weekend':'');
+      cell.style.gridColumn=`${index+1} / span 1`;
+      cell.innerHTML=
+        `<span>${d.toLocaleDateString('de-DE',{weekday:'short',timeZone:'UTC'}).replace('.','')}</span>`+
+        `<span>${String(d.getUTCDate()).padStart(2,'0')}</span>`;
+      days.appendChild(cell);
+    });
+  }
+
+  function exportJson(){
+    download('2401_Bernried_LPH3_Terminplan.json',JSON.stringify(data,null,2),'application/json');
+  }
+  function exportCsv(){
+    const header=['PSP','Vorgang','Typ','Sammelvorgang','Verantwortlich','Anfang','Ende','Dauer_AT','Fortschritt','Status','Vorgänger','Kritisch','Notiz'];
+    const lines=[header];
+    data.groups.forEach(g=>{
+      data.tasks.filter(t=>t.group===g.id).sort((a,b)=>a.start.localeCompare(b.start)).forEach((t,i)=>{
+        const pred=data.tasks.find(x=>x.id===t.pred)?.name||'';
+        lines.push([g.wbs+'.'+String(i+1).padStart(2,'0'),t.name,t.type||'task',g.name,t.owner,t.start,t.end,t.type==='milestone'?0:workDuration(t.start,t.end),t.progress,t.status,pred,t.critical?'Ja':'Nein',t.note]);
+      });
+    });
+    const csv=lines.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');
+    download('2401_Bernried_LPH3_Terminplan.csv','\ufeff'+csv,'text/csv;charset=utf-8');
+  }
+  function download(name,content,type){
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href);
+  }
+  function importJson(file){
+    const reader=new FileReader();reader.onload=()=>{
+      try{
+        const obj=JSON.parse(reader.result);
+        if(!obj.project||!Array.isArray(obj.groups)||!Array.isArray(obj.tasks))throw new Error();
+        data=obj;render();toast('Terminplan importiert.');
+      }catch(e){alert('Die JSON-Datei hat nicht das erwartete Format.')}
+    };reader.readAsText(file);
+  }
+
+  // Events
+  $('#addTaskBtn').onclick=()=>openTask(null,'task');
+  $('#addMilestoneBtn').onclick=()=>openTask(null,'milestone');
+  $('#addGroupBtn').onclick=()=>openGroup();
+  $('#saveTaskBtn').onclick=saveTask;
+  $('#deleteTaskBtn').onclick=()=>deleteTask();
+  $('#saveGroupBtn').onclick=saveGroup;
+  $('#searchInput').oninput=render;
+  $('#weekendToggle').onchange=e=>{hideWeekends=e.target.checked;render()};
+  ['arch','fach','ag','cost'].forEach(key=>{
+    const input=$('#color-'+key);
+    if(input) input.oninput=e=>{
+      uiState.colors={...DEFAULT_COLORS,...(uiState.colors||{}),[key]:e.target.value};
+      applyUIState();
+      render();
+      saveUIState();
+    };
+  });
+
+  document.querySelectorAll('[data-zoom]').forEach(b=>b.onclick=()=>{
+    zoom=b.dataset.zoom;document.querySelectorAll('[data-zoom]').forEach(x=>x.classList.toggle('active',x===b));render();
+  });
+  $('#todayBtn').onclick=()=>{
+    const today=iso(new Date());
+    const start=data.project.start;
+    const end=data.project.end;
+    let target=today;
+    if(today<start){target=start;toast('Heute liegt vor dem Projektzeitraum. Es wurde zum Projektbeginn gesprungen.');}
+    else if(today>end){target=end;toast('Heute liegt nach dem Projektzeitraum. Es wurde zum Projektende gesprungen.');}
+    const idx=nearestVisibleIndex(target);
+    timelineWrap.scrollLeft=Math.max(0,idx*cellWidth-timelineWrap.clientWidth/2);
+  };
+  $('#exportJsonBtn').onclick=exportJson;
+  $('#exportCsvBtn').onclick=exportCsv;
+  $('#importJsonBtn').onclick=()=>$('#jsonFile').click();
+  $('#jsonFile').onchange=e=>e.target.files[0]&&importJson(e.target.files[0]);
+  $('#printBtn').onclick=()=>{
+    buildPrintSheet();
+    requestAnimationFrame(()=>window.print());
+  };
+  window.addEventListener('beforeprint',buildPrintSheet);
+  $('#resetBtn').onclick=()=>{
+    if(confirm('Den lokal gespeicherten Stand durch den Ausgangsstand ersetzen?')){data=clone(initialData);localStorage.removeItem(STORAGE_KEY);render();toast('Ausgangsstand wiederhergestellt.')}
+  };
+  $('#taskType').onchange=e=>{if(e.target.value==='milestone')$('#taskEnd').value=$('#taskStart').value};
+  $('#taskStart').onchange=()=>{if($('#taskType').value==='milestone')$('#taskEnd').value=$('#taskStart').value};
+  $('#ctxEdit').onclick=()=>{const id=contextId;hideContext();openTask(id)};
+  $('#ctxDuplicate').onclick=()=>{const id=contextId;hideContext();duplicateTask(id)};
+  $('#ctxDelete').onclick=()=>{const id=contextId;hideContext();deleteTask(id)};
+  document.addEventListener('click',e=>{if(!$('#contextMenu').contains(e.target))hideContext()});
+
+  // Sync vertical scroll
+  let syncing=false;
+  leftScroll.addEventListener('scroll',()=>{if(syncing)return;syncing=true;timelineWrap.scrollTop=leftScroll.scrollTop;requestAnimationFrame(()=>syncing=false)});
+  timelineWrap.addEventListener('scroll',()=>{if(syncing)return;syncing=true;leftScroll.scrollTop=timelineWrap.scrollTop;requestAnimationFrame(()=>syncing=false)});
+
+  // Splitter
+  $('#splitter').onpointerdown=e=>{
+    e.preventDefault();
+    const start=e.clientX;
+    const startW=$('#leftPanel').getBoundingClientRect().width;
+    const move=ev=>{
+      const minW=853;
+      const w=Math.max(minW,Math.min(1200,startW+ev.clientX-start));
+      uiState.leftWidth=w;
+      document.documentElement.style.setProperty('--left-w',w+'px');
+    };
+    const up=()=>{
+      window.removeEventListener('pointermove',move);
+      window.removeEventListener('pointerup',up);
+      saveUIState();
+    };
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',up);
+  };
+
+  applyUIState();
+  render();
+})();
+</script>
+</body>
+</html>

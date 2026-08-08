@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2401 Bernried · Project Hub</title>
+<style>
+:root{--ink:#111;--muted:#6d6d69;--line:#dfdfda;--soft:#f4f4f1;--header-h:88px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#fff}button{font:inherit;cursor:pointer}a{color:inherit}
+.site-header{min-height:var(--header-h);display:grid;grid-template-columns:auto minmax(260px,1fr) auto;align-items:center;gap:34px;padding:0 40px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:50}
+.brand,.project-name{font-size:18px;line-height:1.2;white-space:nowrap}.brand strong{font-weight:700}.project-name{justify-self:center;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:0 18px;border:0;background:transparent;color:inherit}
+.site-nav{justify-self:end;display:flex;gap:24px;align-items:center;white-space:nowrap}.site-nav button{border:0;background:transparent;padding:12px 0;font-size:16px;color:#171717;position:relative}.site-nav button:hover::after,.site-nav button.active::after{content:"";position:absolute;height:1px;left:0;right:0;bottom:6px;background:#111}
+.main{min-height:calc(100vh - var(--header-h));background:#fff}.view{display:none}.view.active{display:block}.content{padding:64px 40px 90px;max-width:1840px;margin:0 auto}.section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:28px;margin-bottom:34px}.section-head h1{font-size:26px;font-weight:400;margin:0;letter-spacing:-.01em}
+.landing-view{height:calc(100vh - var(--header-h));min-height:520px;background:#eee;overflow:hidden}.landing-view img{width:100%;height:100%;display:block;object-fit:cover}
+.doc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:46px 38px}.doc-card{min-width:0}.thumb-wrap{aspect-ratio:1.414/1;background:#f2f2ef;border:1px solid #eee;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer}.thumb-wrap img{width:100%;height:100%;object-fit:contain;background:#fff;transition:transform .25s ease}.doc-card:hover .thumb-wrap img{transform:scale(1.008)}
+.doc-info{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding-top:14px;border-top:1px solid #111;margin-top:11px}.doc-info h2{font-size:18px;font-weight:400;margin:0 0 6px}.doc-meta{font-size:12px;color:var(--muted);line-height:1.5}.text-btn{border:0;background:transparent;padding:4px 0;text-decoration:underline;text-underline-offset:3px;font-size:13px}
+.terminplan-frame{width:100%;height:calc(100vh - var(--header-h));border:0;display:block;background:#fff}.model-view{height:calc(100vh - var(--header-h));min-height:540px;background:#ececeb}.model-frame{width:100%;height:100%;border:0;display:block;background:#ececeb}
+.images-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}.image-card{background:#f2f2ef;min-height:260px}.image-card img{width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;display:block;cursor:pointer}.image-card .caption{padding:11px 0;background:#fff;font-size:13px}
+.contact-wrap{max-width:720px}.contact-title{font-size:18px;margin:0 0 34px;font-weight:400}.contact-block{font-size:20px;line-height:1.55;margin-bottom:24px}.contact-block a{text-decoration:underline;text-underline-offset:4px}
+.modal{position:fixed;inset:0;background:rgba(255,255,255,.985);z-index:100;display:none;flex-direction:column}.modal.open{display:flex}.modal-head{height:72px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;padding:0 24px}.modal-title{font-size:18px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.modal-head button{border:1px solid var(--line);background:#fff;padding:9px 12px;font-size:13px}.modal-body{flex:1;min-height:0;background:#ececeb}.modal-body iframe{width:100%;height:100%;border:0;display:block}.modal-body img{max-width:100%;max-height:100%;display:block;margin:auto;object-fit:contain;width:100%;height:100%}
+@media(max-width:1500px){.site-header{grid-template-columns:auto 1fr;grid-template-rows:auto auto;padding:18px 24px;gap:12px 28px;position:relative}.brand{grid-column:1}.project-name{grid-column:2;justify-self:end;text-align:right;padding:0}.site-nav{grid-column:1/-1;justify-self:start;overflow:auto;width:100%;padding-top:2px}}
+@media(max-width:820px){.site-header{display:flex;flex-direction:column;align-items:flex-start;padding:20px}.project-name{font-size:16px}.site-nav{gap:20px;font-size:15px;overflow:auto;width:100%}.content{padding:42px 20px 70px}.section-head{align-items:flex-start;flex-direction:column}.doc-grid,.images-grid{grid-template-columns:1fr}.terminplan-frame,.landing-view,.model-view{height:calc(100vh - 150px)}.contact-block{font-size:17px}}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="brand">Titus Bernhard <strong>Architekten</strong></div>
+  <button class="project-name" id="homeBtn" title="Startseite">2401 Bernried · Forum Humor</button>
+  <nav class="site-nav" aria-label="Projekt-Navigation">
+    <button data-view="grundrisse">Grundrisse</button>
+    <button data-view="schnitte">Schnitte und Ansichten</button>
+    <button data-view="modell">3D Modell</button>
+    <button data-view="terminplan">Terminplan</button>
+    <button data-view="images">Images</button>
+    <button data-view="kontakt">Kontakt</button>
+  </nav>
+</header>
+<main class="main">
+  <section class="view active" id="view-landing"><div class="landing-view"><img src="assets/images/landing.jpg" alt="2401 Bernried · Forum Humor"></div></section>
+  <section class="view" id="view-grundrisse"><div class="content"><div class="section-head"><h1>Grundrisse</h1></div><div class="doc-grid" id="grid-grundrisse"></div></div></section>
+  <section class="view" id="view-schnitte"><div class="content"><div class="section-head"><h1>Schnitte und Ansichten</h1></div><div class="doc-grid" id="grid-schnitte"></div></div></section>
+  <section class="view" id="view-modell"><div class="model-view"><iframe class="model-frame" src="https://share.d5render.com/user-hub/showreel/shortLink/HHePZ3" allow="fullscreen" allowfullscreen title="3D Modell"></iframe></div></section>
+  <section class="view" id="view-terminplan"><iframe class="terminplan-frame" src="terminplan.html" title="Planungsterminplan LPH 3"></iframe></section>
+  <section class="view" id="view-images"><div class="content"><div class="section-head"><h1>Images</h1></div><div class="images-grid"><article class="image-card"><img src="assets/images/innenraum_01.jpg" data-full="assets/images/innenraum_01.jpg" alt="Innenraum 01"><div class="caption">Innenraum 01 · Visualisierung</div></article><article class="image-card"><img src="assets/images/innenraum_02.jpg" data-full="assets/images/innenraum_02.jpg" alt="Innenraum 02"><div class="caption">Innenraum 02 · Visualisierung</div></article></div></div></section>
+  <section class="view" id="view-kontakt"><div class="content"><div class="contact-wrap"><h1 class="contact-title">KONTAKT</h1><div class="contact-block">Titus Bernhard Architekten BDA</div><div class="contact-block">Provinostraße 52<br>Martinipark – Gebäude B2<br>D – 86153 Augsburg</div><div class="contact-block">Fon +49 821 599 605–0<br>Fax +49 821 599 605–10</div><div class="contact-block"><a href="mailto:info@bernhardarchitekten.com">info@bernhardarchitekten.com</a><br><a href="https://www.titusbernhardarchitekten.com" target="_blank" rel="noopener">www.titusbernhardarchitekten.com</a></div></div></div></section>
+</main>
+<div class="modal" id="viewerModal"><div class="modal-head"><div class="modal-title" id="viewerTitle"></div><button id="viewerNewWindow">In neuem Fenster öffnen</button><button id="viewerClose">Schließen</button></div><div class="modal-body" id="viewerBody"></div></div>
+<script>
+const docs={
+  grundrisse:[
+    {title:'EG · Erdgeschoss',meta:'Grundriss EG · M 1:100 · ARBEITSSTAND · 05.08.2026',pdf:'assets/pdfs/EG.pdf',thumb:'assets/thumbs/EG.jpg'},
+    {title:'1OG · Obergeschoss',meta:'Grundriss OG · M 1:100 · ARBEITSSTAND · 05.05.2026',pdf:'assets/pdfs/1OG.pdf',thumb:'assets/thumbs/1OG.jpg'}
+  ],
+  schnitte:[
+    {title:'Schnitt C / D',meta:'Schnitt C / D · M 1:100 · ARBEITSSTAND · 24.04.2024',pdf:'assets/pdfs/Schnitt_C-D.pdf',thumb:'assets/thumbs/Schnitt_C-D.jpg'},
+    {title:'Ansicht SO / Schnitt F',meta:'Ansicht SO / Schnitt F · M 1:100 · ARBEITSSTAND · 05.08.2024',pdf:'assets/pdfs/Ansicht_SO-Schnitt_F.pdf',thumb:'assets/thumbs/Ansicht_SO-Schnitt_F.jpg'},
+    {title:'Ansicht SW / Schnitt B',meta:'Ansicht SW / Schnitt B · M 1:100 · ARBEITSSTAND · 24.04.2024',pdf:'assets/pdfs/Ansicht_SW-Schnitt_B.pdf',thumb:'assets/thumbs/Ansicht_SW-Schnitt_B.jpg'},
+    {title:'Ansicht NW / Schnitt I',meta:'Ansicht NW / Schnitt I · M 1:100 · ARBEITSSTAND · 06.08.2026',pdf:'assets/pdfs/Ansicht_NW-Schnitt_I.pdf',thumb:'assets/thumbs/Ansicht_NW-Schnitt_I.jpg'},
+    {title:'Ansicht NO / Schnitt E',meta:'Ansicht NO / Schnitt E · M 1:100 · ARBEITSSTAND · 24.04.2024',pdf:'assets/pdfs/Ansicht_NO-Schnitt_E.pdf',thumb:'assets/thumbs/Ansicht_NO-Schnitt_E.jpg'}
+  ]
+};
+function renderDocs(section){const host=document.getElementById('grid-'+section);host.innerHTML='';docs[section].forEach(d=>{const card=document.createElement('article');card.className='doc-card';card.innerHTML=`<div class="thumb-wrap"><img src="${d.thumb}" alt="${d.title}"></div><div class="doc-info"><div><h2>${d.title}</h2><div class="doc-meta">${d.meta}</div></div><button class="text-btn">PDF öffnen</button></div>`;card.querySelector('.thumb-wrap').onclick=()=>openPdf(d);card.querySelector('.text-btn').onclick=()=>openPdf(d);host.appendChild(card)})}
+const modal=document.getElementById('viewerModal'),body=document.getElementById('viewerBody'),title=document.getElementById('viewerTitle');let currentUrl='';
+function openPdf(d){currentUrl=d.pdf;title.textContent=d.title;body.innerHTML=`<iframe src="${d.pdf}#view=FitH" title="${d.title}"></iframe>`;modal.classList.add('open')}
+function openImage(src,caption){currentUrl=src;title.textContent=caption;body.innerHTML=`<img src="${src}" alt="${caption}">`;modal.classList.add('open')}
+document.getElementById('viewerClose').onclick=()=>{modal.classList.remove('open');body.innerHTML=''};document.getElementById('viewerNewWindow').onclick=()=>{if(currentUrl)window.open(currentUrl,'_blank','noopener')};document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('viewerClose').click()});
+document.querySelectorAll('.image-card img').forEach(img=>img.onclick=()=>openImage(img.dataset.full,img.alt));
+function showView(name){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.querySelectorAll('.site-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));document.getElementById('view-'+name).classList.add('active');history.replaceState(null,'','#'+(name==='landing'?'':name));window.scrollTo(0,0)}
+document.querySelectorAll('.site-nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));document.getElementById('homeBtn').onclick=()=>showView('landing');
+renderDocs('grundrisse');renderDocs('schnitte');const hash=location.hash.replace('#','');if(hash&&document.getElementById('view-'+hash))showView(hash);
+</script>
+</body>
+</html>
