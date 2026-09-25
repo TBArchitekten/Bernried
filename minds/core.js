@@ -8,7 +8,7 @@
   const KEY = 'minds_work_bernried_v1';
   const MAIL_KEY = 'minds_work_bernried_mail_v1';
   const KINDS = ['task', 'decision', 'lesson', 'procedure', 'question', 'note'];
-  const STATES = ['open', 'waiting', 'done'];
+  const STATES = ['open', 'progress', 'waiting', 'done'];
   const MAX_ENTRIES = 1000;
   const MAX_MAILS = 500;
   const MAX_BYTES = 2 * 1024 * 1024;
@@ -62,7 +62,15 @@
       source:value.source === null ? null : source(value.source),
       bucketId:string(value.bucketId || '', 100),
       sortOrder:Number.isInteger(value.sortOrder) ? value.sortOrder : 0,
-      priority:['low','normal','important','urgent'].includes(value.priority) ? value.priority : 'normal',
+      priority:['low','medium','important','urgent'].includes(value.priority) ? value.priority : 'medium',
+      startDate:date(value.startDate || ''),
+      recurrence:['none','daily','weekdays','weekly','monthly','yearly'].includes(value.recurrence) ? value.recurrence : 'none',
+      labels:Array.isArray(value.labels) ? value.labels.slice(0,25).map((item,index)=>({
+        id:string(String(item?.id || index),100,true),
+        name:string(String(item?.name || ''),120,true),
+        color:string(String(item?.color || 'slate'),40,true)
+      })) : [],
+      showOnCard:Boolean(value.showOnCard),
       checklist:Array.isArray(value.checklist) ? value.checklist.slice(0,100).map((item, index) => ({
         id:string(String(item?.id || index), 100, true),
         text:string(String(item?.text || ''), 500, true),
