@@ -19,11 +19,11 @@
         <p class="eyebrow">2401 BERNRIED <span>/</span> LPH 3</p>
         <h1>MINDS<span>//</span>WORK</h1>
       </div>
-      <div class="pilot-label"><span class="dot"></span> Pilot 0.4 · Planner Board + indexed memory</div>
+      <div class="pilot-label"><span class="dot"></span> Pilot 0.5 · Work memory</div>
     </header>
 
-    <div class="notice">
-      <strong>Private Memory aktiv.</strong> To-Dos, Memory, Mail und Gespräche werden nach Anmeldung in Supabase gespeichert und per Row Level Security auf dein Bernried-Konto begrenzt. Lokale Pilotdaten können einmalig migriert werden.
+    <div class="notice compact-notice">
+      <strong>Private Memory aktiv.</strong> To-Dos, Mail, Memory und Gespräche liegen geschützt in Supabase.
     </div>
 
     <nav class="sections" aria-label="MINDS-Bereiche">
@@ -38,13 +38,13 @@
         <div><strong id="metric-open">0</strong><span>offene To-Dos</span></div>
         <div><strong id="metric-waiting">0</strong><span>warte auf Rückmeldung</span></div>
         <div><strong id="metric-decisions">0</strong><span>Entscheidungen</span></div>
-        <div><strong id="metric-mail">0</strong><span>E-Mails im Pilot</span></div>
+        <div><strong id="metric-mail">0</strong><span>E-Mails in Memory</span></div>
       </div>
       <div class="assistant-layout">
         <section class="conversation">
           <div class="conversation-head">
             <div><p class="eyebrow">MY PROJECT MEMORY</p><h2>Was möchtest du über Bernried wissen oder erledigen?</h2></div>
-            <button class="quiet" id="clear-chat">Gespräch leeren</button>
+            <button class="quiet" id="clear-chat">Neues Gespräch</button>
           </div>
           <div class="chat-feed" id="chat-feed" aria-live="polite"></div>
           <div class="quick-actions" aria-label="Schnellfragen">
@@ -58,7 +58,7 @@
               <label><input type="radio" name="ask-mode" value="memory" checked> My project memory</label>
               <label class="disabled"><input id="beyond-mode" type="radio" name="ask-mode" value="external" disabled> Beyond my memory · später</label>
             </div>
-            <textarea id="ask-input" rows="3" maxlength="1200" placeholder="z. B. Was hat Herr X zu Thema Y geschrieben? · Füge mir ein To-Do hinzu · Was muss ich bei diesem Thema noch bedenken?"></textarea>
+            <textarea id="ask-input" rows="3" maxlength="1200" placeholder="z. B. Was schrieb Herr X zu Thema Y? · Füge ein To-Do hinzu · Was ist noch offen?"></textarea>
             <div class="ask-actions"><span>Fragen werden als Projektsignal gespeichert.</span><button class="primary" type="submit">Fragen</button></div>
           </form>
         </section>
@@ -72,21 +72,16 @@
 
     <section class="screen" id="screen-todos" hidden>
       <div class="planner-head">
-        <div>
-          <p class="eyebrow">OPERATIVE MEMORY</p>
-          <h2>To-Dos</h2>
-        </div>
-        <div class="planner-head-actions">
-          <button class="primary" id="new-todo">+ Aufgabe</button>
-        </div>
+        <div><p class="eyebrow">OPERATIVE MEMORY</p><h2>To-Dos</h2></div>
+        <button class="primary" id="new-todo">+ Aufgabe</button>
       </div>
 
       <div class="planner-toolbar">
         <div class="planner-views" role="tablist" aria-label="Aufgabenansicht">
           <button id="todo-view-grid" data-todo-view="grid" aria-pressed="false">▦ <span>Raster</span></button>
           <button id="todo-view-board" data-todo-view="board" aria-pressed="true">▥ <span>Board</span></button>
-          <button class="disabled-view" disabled>▣ <span>Kalender</span></button>
-          <button class="disabled-view" disabled>◔ <span>Diagramme</span></button>
+          <button id="todo-view-calendar" data-todo-view="calendar" aria-pressed="false">▣ <span>Kalender</span></button>
+          <button id="todo-view-charts" data-todo-view="charts" aria-pressed="false">◔ <span>Diagramme</span></button>
         </div>
         <div class="planner-tools">
           <label class="planner-search">⌕<input id="todo-search" type="search" maxlength="200" placeholder="Aufgaben suchen"></label>
@@ -94,12 +89,33 @@
             <select id="todo-status-filter">
               <option value="active">Aktiv</option>
               <option value="all">Alle</option>
-              <option value="open">Offen</option>
+              <option value="open">Nicht begonnen</option>
+              <option value="progress">In Bearbeitung</option>
               <option value="waiting">Wartet</option>
-              <option value="done">Erledigt</option>
+              <option value="done">Abgeschlossen</option>
             </select>
           </label>
-          <div class="planner-group">☷ <span>Gruppieren nach:</span> <strong>Bucket</strong></div>
+          <div class="planner-filter-popover-wrap">
+            <button type="button" id="todo-filter-toggle" class="planner-filter-button">☰ <span>Filter</span></button>
+            <div id="todo-filter-popover" class="planner-filter-popover" hidden>
+              <label>Priorität<select id="todo-priority-filter"><option value="all">Alle</option><option value="urgent">Dringend</option><option value="important">Wichtig</option><option value="medium">Mittel</option><option value="low">Niedrig</option></select></label>
+              <label>Bucket<select id="todo-bucket-filter"><option value="all">Alle</option></select></label>
+              <label>Zugewiesen an<select id="todo-owner-filter"><option value="all">Alle</option></select></label>
+              <label>Bezeichnung<select id="todo-label-filter"><option value="all">Alle</option></select></label>
+              <label>Fälligkeit<select id="todo-due-filter"><option value="all">Alle</option><option value="overdue">Überfällig</option><option value="today">Heute</option><option value="week">Nächste 7 Tage</option><option value="later">Später</option><option value="none">Ohne Termin</option></select></label>
+              <button type="button" id="todo-filter-reset" class="quiet">Filter zurücksetzen</button>
+            </div>
+          </div>
+          <label class="planner-group">☷ <span>Gruppieren nach:</span>
+            <select id="todo-group-by">
+              <option value="bucket">Bucket</option>
+              <option value="state">Status</option>
+              <option value="priority">Priorität</option>
+              <option value="due">Fälligkeit</option>
+              <option value="owner">Zugewiesen an</option>
+              <option value="label">Bezeichnungen</option>
+            </select>
+          </label>
         </div>
       </div>
 
@@ -107,18 +123,37 @@
 
       <div id="todo-grid-view" class="planner-grid" hidden>
         <table>
-          <thead><tr><th></th><th>Aufgabe</th><th>Bucket</th><th>Status</th><th>Priorität</th><th>Termin</th><th>Verantwortlich</th></tr></thead>
+          <thead><tr><th></th><th>Aufgabe</th><th>Bucket</th><th>Status</th><th>Priorität</th><th>Start</th><th>Fällig</th><th>Verantwortlich</th></tr></thead>
           <tbody id="todo-grid-body"></tbody>
         </table>
       </div>
+
+      <section id="todo-calendar-view" class="planner-calendar" hidden>
+        <div class="calendar-head"><button id="calendar-prev">‹</button><h3 id="calendar-title"></h3><button id="calendar-next">›</button></div>
+        <div class="calendar-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </section>
+
+      <section id="todo-charts-view" class="planner-charts" hidden>
+        <div class="chart-card"><h3>Status</h3><div id="chart-status"></div></div>
+        <div class="chart-card"><h3>Priorität</h3><div id="chart-priority"></div></div>
+        <div class="chart-card"><h3>Bucket</h3><div id="chart-bucket"></div></div>
+      </section>
     </section>
 
     <section class="screen" id="screen-mail" hidden>
-      <div class="screen-head">
-        <div><p class="eyebrow">PROJECT CORRESPONDENCE</p><h2>Mail</h2><p>Später private, durchsuchbare Projektkorrespondenz. Im Pilot nur lokaler Browser-Speicher.</p></div>
-        <button class="primary" id="new-mail">+ E-Mail erfassen</button>
+      <div class="screen-head mail-head">
+        <div><p class="eyebrow">PROJECT CORRESPONDENCE</p><h2>Mail</h2><p>E-Mails werden als private Quellen gespeichert, indexiert und für MINDS durchsuchbar.</p></div>
+        <button class="quiet" id="new-mail">Manuell erfassen</button>
       </div>
-      <div class="mail-warning private-ok"><strong>Privater Server-Speicher.</strong> Mailtexte und Anhänge liegen im privaten MINDS-Bereich von Supabase; Zugriff erfordert Anmeldung und Projektberechtigung.</div>
+
+      <section id="mail-drop" class="mail-drop" tabindex="0">
+        <div class="drop-icon">↧</div>
+        <div><strong>E-Mails hier ablegen</strong><p>.eml oder Outlook .msg · mehrere Dateien gleichzeitig</p></div>
+        <label class="drop-browse">Dateien wählen<input id="mail-drop-input" type="file" accept=".eml,.msg,message/rfc822,application/vnd.ms-outlook" multiple></label>
+      </section>
+      <div id="mail-import-status" class="import-status" aria-live="polite"></div>
+
       <div class="mail-toolbar">
         <label>E-Mails durchsuchen<input id="mail-search" type="search" maxlength="200" placeholder="Absender, Betreff oder Inhalt …"></label>
         <span id="mail-count">0 E-Mails</span>
@@ -128,8 +163,8 @@
 
     <section class="screen" id="screen-memory" hidden>
       <div class="screen-head">
-        <div><p class="eyebrow">BACKGROUND MEMORY</p><h2>Projektgedächtnis</h2><p>Hier kannst du sehen, was der Assistent im Hintergrund als Aufgabe, Entscheidung, Erfahrung, Vorgehensweise oder Frage kennt.</p></div>
-        <button class="primary" id="new-entry">+ Erinnerung erfassen</button>
+        <div><p class="eyebrow">BACKGROUND MEMORY</p><h2>Projektgedächtnis</h2><p>Was MINDS im Hintergrund als Entscheidung, Erfahrung, Vorgehensweise, Frage oder Quelle kennt.</p></div>
+        <button class="primary" id="new-entry">+ Erinnerung</button>
       </div>
       <div class="memory-toolbar">
         <label>Gedächtnis durchsuchen<input id="search" type="search" placeholder="Begriff, Beteiligte oder Quelle …" maxlength="200"></label>
@@ -140,7 +175,7 @@
       <div id="entries"></div>
       <section id="source-panel" hidden><p id="source-note"></p><button id="refresh-sources">Quellen aktualisieren</button><div id="sources"></div></section>
       <section class="backup">
-        <div><p class="eyebrow">BACKUP</p><p>Der Export enthält das Projektgedächtnis im Klartext.</p></div>
+        <div><p class="eyebrow">BACKUP</p><p>Export enthält das private Projektgedächtnis im Klartext.</p></div>
         <div class="backup-actions"><button id="export">Memory JSON exportieren</button><label class="file-button">Memory JSON importieren<input id="import" type="file" accept="application/json,.json"></label></div>
       </section>
     </section>
@@ -151,30 +186,105 @@
   <dialog id="editor" aria-labelledby="editor-title">
     <form id="entry-form">
       <div class="dialog-heading"><h2 id="editor-title">Erinnerung erfassen</h2><button type="button" id="close-editor" aria-label="Schließen">×</button></div>
-      <div class="form-row"><label>Typ<select id="entry-kind"><option value="task">To-Do</option><option value="decision">Entscheidung</option><option value="lesson">Erfahrung / Fehler</option><option value="procedure">Vorgehensweise</option><option value="question">Frage an AI</option><option value="note">Notiz</option></select></label><label>Status<select id="entry-state"><option value="open">Offen</option><option value="waiting">Wartet auf Rückmeldung</option><option value="done">Abgeschlossen</option></select></label></div>
-      <div id="task-fields">
-        <div class="form-row"><label>Bucket<select id="entry-bucket"></select></label><label>Priorität<select id="entry-priority"><option value="low">Niedrig</option><option value="normal">Normal</option><option value="important">Wichtig</option><option value="urgent">Dringend</option></select></label></div>
-        <label>Checkliste<textarea id="entry-checklist" rows="3" maxlength="6000" placeholder="Ein Punkt pro Zeile"></textarea></label>
-      </div>
-      <label>Titel<input id="entry-title" required maxlength="180" placeholder="Was soll MINDS wissen oder verfolgen?"></label>
-      <label>Kontext / Begründung<textarea id="entry-body" rows="4" maxlength="12000" placeholder="Was ist passiert? Warum ist es wichtig?"></textarea></label>
+      <div class="form-row"><label>Typ<select id="entry-kind"><option value="decision">Entscheidung</option><option value="lesson">Erfahrung / Fehler</option><option value="procedure">Vorgehensweise</option><option value="question">Frage an AI</option><option value="note">Notiz</option></select></label><label>Status<select id="entry-state"><option value="open">Offen</option><option value="done">Abgeschlossen</option></select></label></div>
+      <label>Titel<input id="entry-title" required maxlength="180"></label>
+      <label>Kontext<textarea id="entry-body" rows="5" maxlength="12000"></textarea></label>
       <div id="decision-fields" hidden><label>Alternativen<textarea id="entry-alternatives" rows="2" maxlength="4000"></textarea></label><label>Auswirkungen / nächster Schritt<textarea id="entry-outcome" rows="2" maxlength="4000"></textarea></label></div>
       <div class="form-row"><label>Verantwortlich / beteiligt<input id="entry-owner" maxlength="160"></label><label>Termin / Wiedervorlage<input id="entry-due" type="date" min="2000-01-01" max="2100-12-31"></label></div>
       <label>Quelle aus dem Projekt<select id="entry-source"><option value="">Eigene Notiz · ohne Dokumentbeleg</option></select></label>
-      <label>Fundstelle / Gespräch / Datum<input id="entry-reference" maxlength="500" placeholder="z. B. E-Mail vom …, Seite 2, Achse B–C"></label>
-      <p class="small">Eine Quelle verknüpft den Eintrag mit einem Dokument. Ihr Inhalt wird im Pilot nicht automatisch gelesen oder bestätigt.</p>
+      <label>Fundstelle / Gespräch / Datum<input id="entry-reference" maxlength="500"></label>
       <p id="form-error" role="alert"></p>
-      <div class="dialog-actions"><button type="button" id="cancel-editor">Abbrechen</button><button class="primary" type="submit">In MINDS speichern</button></div>
+      <div class="dialog-actions"><button type="button" id="cancel-editor">Abbrechen</button><button class="primary" type="submit">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="task-detail" class="task-dialog" aria-labelledby="task-title-input">
+    <form id="task-form" class="task-shell">
+      <section class="task-detail-main">
+        <header class="task-detail-head">
+          <button type="button" id="task-complete-toggle" class="detail-complete" aria-label="Aufgabe abschließen"></button>
+          <div class="task-title-wrap">
+            <input id="task-title-input" class="detail-title" required maxlength="180" placeholder="Aufgabenname">
+            <p id="task-meta-line" class="detail-meta"></p>
+          </div>
+          <div class="task-head-actions">
+            <button type="button" id="task-copy" title="Aufgabe duplizieren">⧉</button>
+            <button type="button" id="task-archive" title="Aufgabe archivieren">⋯</button>
+            <button type="button" id="close-task-detail" aria-label="Schließen">×</button>
+          </div>
+        </header>
+
+        <div class="task-label-row">
+          <span class="detail-icon">◇</span>
+          <input id="task-labels" maxlength="600" placeholder="Bezeichnungen hinzufügen · mit Komma trennen">
+        </div>
+        <div class="task-assign-row">
+          <span class="detail-icon">♙</span>
+          <input id="task-owner" maxlength="160" placeholder="Zuweisen an">
+        </div>
+
+        <nav class="task-tabs">
+          <button type="button" data-task-tab="details" aria-pressed="true">▣ Aufgabendetails</button>
+          <button type="button" data-task-tab="attachments" aria-pressed="false">⌕ Anlagen <span id="task-file-count"></span></button>
+        </nav>
+
+        <div id="task-tab-details" class="task-tab active">
+          <div class="task-fields-grid">
+            <label>Status<select id="task-state"><option value="open">○ Nicht begonnen</option><option value="progress">◐ In Bearbeitung</option><option value="waiting">◌ Wartet auf Rückmeldung</option><option value="done">✓ Abgeschlossen</option></select></label>
+            <label>Priorität<select id="task-priority"><option value="urgent">● Dringend</option><option value="important">● Wichtig</option><option value="medium">● Mittel</option><option value="low">● Niedrig</option></select></label>
+            <label>Startdatum<input id="task-start" type="date" min="2000-01-01" max="2100-12-31"></label>
+            <label>Fälligkeitsdatum<input id="task-due" type="date" min="2000-01-01" max="2100-12-31"></label>
+            <label>Wiederholen<select id="task-recurrence"><option value="none">↻ Wiederholt sich nicht</option><option value="daily">Täglich</option><option value="weekdays">Wochentage (Mo–Fr)</option><option value="weekly">Wöchentlich</option><option value="monthly">Monatlich</option><option value="yearly">Jährlich</option></select></label>
+            <label>Bucket<select id="task-bucket"></select></label>
+          </div>
+
+          <section class="task-section">
+            <h3>Checkliste</h3>
+            <div id="task-checklist" class="task-checklist"></div>
+            <button type="button" id="add-checklist-item" class="detail-add">○ Element hinzufügen</button>
+          </section>
+
+          <section class="task-section">
+            <div class="task-section-head"><h3>Notizen</h3><label class="show-card"><input id="task-show-card" type="checkbox"> In Boardansicht anzeigen</label></div>
+            <textarea id="task-notes" rows="8" maxlength="12000" placeholder="Notizen zur Aufgabe"></textarea>
+          </section>
+
+          <div class="task-source-strip">
+            <label>Quelle<select id="task-source"><option value="">Keine Projektquelle</option></select></label>
+            <label>Fundstelle<input id="task-reference" maxlength="500" placeholder="z. B. E-Mail, Seite, Achse …"></label>
+          </div>
+        </div>
+
+        <div id="task-tab-attachments" class="task-tab" hidden>
+          <section class="task-section">
+            <h3>Anlagen</h3>
+            <div id="task-file-list" class="task-file-list"></div>
+            <label class="attachment-drop">Datei hinzufügen<input id="task-file-input" type="file" multiple></label>
+            <div class="link-add"><input id="task-link-url" type="url" placeholder="https://…"><input id="task-link-label" placeholder="Bezeichnung"><button type="button" id="task-add-link">Link hinzufügen</button></div>
+          </section>
+        </div>
+
+        <footer class="task-detail-footer">
+          <span id="task-save-state">Änderungen werden beim Speichern übernommen.</span>
+          <button class="primary" type="submit">Speichern</button>
+        </footer>
+      </section>
+
+      <aside class="task-chat">
+        <h3>Aufgabenchat</h3>
+        <div id="task-comments" class="task-comments"></div>
+        <div class="task-comment-box"><textarea id="task-comment-input" rows="3" maxlength="12000" placeholder="Nachricht eingeben"></textarea><button type="button" id="task-comment-send">➤</button></div>
+      </aside>
     </form>
   </dialog>
 
   <dialog id="mail-editor" aria-labelledby="mail-editor-title">
     <form id="mail-form">
-      <div class="dialog-heading"><h2 id="mail-editor-title">E-Mail erfassen</h2><button type="button" id="close-mail-editor" aria-label="Schließen">×</button></div>
-      <div class="form-row"><label>Absender<input id="mail-sender" maxlength="240" placeholder="Name / E-Mail"></label><label>Datum<input id="mail-date" type="date" min="2000-01-01" max="2100-12-31"></label></div>
-      <label>Empfänger<input id="mail-recipients" maxlength="1000" placeholder="Name / E-Mail"></label>
+      <div class="dialog-heading"><h2 id="mail-editor-title">E-Mail manuell erfassen</h2><button type="button" id="close-mail-editor" aria-label="Schließen">×</button></div>
+      <div class="form-row"><label>Absender<input id="mail-sender" maxlength="240"></label><label>Datum<input id="mail-date" type="date" min="2000-01-01" max="2100-12-31"></label></div>
+      <label>Empfänger<input id="mail-recipients" maxlength="1000"></label>
       <label>Betreff<input id="mail-subject" required maxlength="300"></label>
-      <label>Inhalt<textarea id="mail-body" rows="10" maxlength="100000" placeholder="E-Mail-Inhalt einfügen."></textarea></label>
+      <label>Inhalt<textarea id="mail-body" rows="10" maxlength="100000"></textarea></label>
       <label>Anhänge<input id="mail-files" type="file" multiple></label>
       <p id="mail-form-error" role="alert"></p>
       <div class="dialog-actions"><button type="button" id="cancel-mail-editor">Abbrechen</button><button class="primary" type="submit">Privat speichern</button></div>
