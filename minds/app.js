@@ -927,12 +927,22 @@
     feedback('Lokale Pilotdaten migriert: '+result.entries+' Memory, '+result.mails+' Mails.');
   }
 
+  async function indexExistingMailOnce(){
+    if(localStorage.getItem('minds_work_bernried_mail_indexed_v1')==='1')return;
+    for(const mail of mails){
+      if(mail.archived || !mail.body.trim())continue;
+      await S.indexMailText(mail);
+    }
+    localStorage.setItem('minds_work_bernried_mail_indexed_v1','1');
+  }
+
   async function boot(){
     try{
       setBusy(true);
       await S.init();
       await migrateLocalOnce();
       await refresh();
+      await indexExistingMailOnce();
       requestContext();
       fetch('sources.json').then(r=>r.ok?r.json():null).then(context=>{
         if(context&&!hubContext)acceptContext(context);
