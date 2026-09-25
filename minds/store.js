@@ -120,7 +120,7 @@
     if (!row.name) throw new Error('Bucket braucht einen Namen.');
     const r = await client.from('minds_buckets').upsert(row).select('*').single();
     const saved = bucketFromRow(fail(r, 'Bucket konnte nicht gespeichert werden'));
-    await event('entry', saved.id, bucket.id ? 'bucket_updated' : 'bucket_created', {name:saved.name});
+    event('entry', saved.id, bucket.id ? 'bucket_updated' : 'bucket_created', {name:saved.name});
     return saved;
   }
 
@@ -132,7 +132,7 @@
     const r = await client.from('minds_buckets').update({archived:true,updated_at:new Date().toISOString()})
       .eq('project_id',project.id).eq('id',bucketId);
     if (r.error) throw new Error('Bucket konnte nicht archiviert werden: ' + r.error.message);
-    await event('entry', bucketId, 'bucket_archived', {});
+    event('entry', bucketId, 'bucket_archived', {});
   }
 
   async function saveEntry(entry) {
@@ -140,7 +140,7 @@
     const row = entryToRow(entry);
     const r = await client.from('minds_entries').upsert(row).select('*').single();
     const saved = entryFromRow(fail(r, 'Memory konnte nicht gespeichert werden'));
-    await event('entry', saved.id, existed ? 'updated' : 'created', {kind:saved.kind,state:saved.state});
+    event('entry', saved.id, existed ? 'updated' : 'created', {kind:saved.kind,state:saved.state});
     return saved;
   }
 
@@ -149,7 +149,7 @@
     const row = mailToRow(mail);
     const r = await client.from('minds_mails').upsert(row).select('*').single();
     const saved = mailFromRow(fail(r, 'E-Mail konnte nicht gespeichert werden'));
-    await event('mail', saved.id, existed ? 'updated' : 'created', {subject:saved.subject});
+    event('mail', saved.id, existed ? 'updated' : 'created', {subject:saved.subject});
     await indexMailText(saved);
     return saved;
   }
