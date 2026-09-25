@@ -153,3 +153,40 @@ El Projektleiter no debe decidir de antemano si algo es `Decision`, `Question` o
 ## Reversibilidad
 
 Todo el trabajo permanece en la rama `codex/minds-work-pilot` y en el PR de borrador. `main` y la página publicada no cambian hasta fusionar. El Pilot puede retirarse eliminando la carga de `minds/bridge.js` y la carpeta `minds/`.
+## Pilot 0.4 · Planner Board + Indexed Memory
+
+### To-Dos: Buckets statt Status-Spalten
+
+Die Board-Ansicht folgt jetzt dem Organisationsprinzip von Microsoft Planner: Buckets sind frei benennbare Arbeitsbereiche. Status ist ein Attribut der Aufgabe und nicht mehr die Spaltenstruktur.
+
+Implementiert:
+
+- frei anlegbare, umbenennbare und archivierbare Buckets;
+- Reihenfolge per `Nach links` / `Nach rechts`;
+- Aufgabe direkt innerhalb eines Buckets hinzufügen;
+- Drag & Drop von Aufgaben zwischen Buckets;
+- Board- und Rasteransicht;
+- Filter nach Status und Textsuche;
+- Priorität, Fälligkeit, Verantwortliche und Checkliste als Task-Metadaten;
+- Completed bleibt im Bucket und kann über Statusfilter ein-/ausgeblendet werden.
+
+Die Daten liegen in `minds_buckets`; Tasks referenzieren `bucket_id`. Bucket und Status bleiben bewusst orthogonal.
+
+### Ingestion foundation
+
+Für die nächste MINDS-Stufe wurden zusätzlich `minds_sources` und `minds_chunks` eingeführt. Beide sind projektprivat und RLS-geschützt.
+
+Beim Speichern einer E-Mail wird ihr Body jetzt automatisch:
+
+1. als Source mit Origin `mail` registriert;
+2. deterministisch in Text-Chunks zerlegt;
+3. mit Provenance (`mailId`, Subject, Sender, Datum) gespeichert;
+4. über PostgreSQL Full-Text Search auffindbar.
+
+Bestehende E-Mails werden beim ersten Start von 0.4 einmalig indexiert. Die Assistenz kann den Quellenindex bereits als Fallback durchsuchen.
+
+**Noch nicht implementiert:** PDF-Textextraktion, OCR, Embeddings/Vector Search und LLM-Antworten. Das Schema ist so angelegt, dass diese Schichten folgen können, ohne E-Mail- oder Task-Memory erneut umzubauen.
+
+Die geplante Pipeline bleibt:
+
+`source → extraction → chunks + provenance → lexical/semantic retrieval → LLM answer → citations`
