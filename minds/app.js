@@ -468,12 +468,17 @@
     return M.todayLocal(base);
   }
 
+  async function spawnNextOccurrence(item){
+    if(!item.recurrence||item.recurrence==='none')return null;
+    const basis=item.due||item.startDate||today(),next=nextOccurrenceDate(basis,item.recurrence);
+    const start=item.startDate?nextOccurrenceDate(item.startDate,item.recurrence):'';
+    return createTaskFast(item.title,item.bucketId,{body:item.body,owner:item.owner,due:item.due?next:'',startDate:start,reference:item.reference,source:item.source,priority:item.priority,recurrence:item.recurrence,labels:item.labels,showOnCard:item.showOnCard,checklist:(item.checklist||[]).map(x=>({...x,id:crypto.randomUUID(),done:false}))});
+  }
+
   async function completeTask(item){
     const wasDone=item.state==='done',saved=await saveEntry({...item,state:'done',updatedAt:new Date().toISOString()},'');
-    if(!wasDone&&item.recurrence&&item.recurrence!=='none'){
-      const basis=item.due||item.startDate||today(),next=nextOccurrenceDate(basis,item.recurrence);
-      const start=item.startDate?nextOccurrenceDate(item.startDate,item.recurrence):'';
-      await createTaskFast(item.title,item.bucketId,{body:item.body,owner:item.owner,due:item.due?next:'',startDate:start,reference:item.reference,source:item.source,priority:item.priority,recurrence:item.recurrence,labels:item.labels,showOnCard:item.showOnCard,checklist:(item.checklist||[]).map(x=>({...x,id:crypto.randomUUID(),done:false}))});
+    if(!wasDone&&saved.recurrence&&saved.recurrence!=='none'){
+      await spawnNextOccurrence(saved);
       feedback('Aufgabe abgeschlossen; nächste Wiederholung wurde erstellt.');
     }else feedback('Aufgabe abgeschlossen.');
     return saved;
@@ -567,7 +572,10 @@
     if(!draft.title)throw new Error('Aufgabe braucht einen Titel.');
     const saved=await saveEntry(draft,'Aufgabe gespeichert.');
     taskEditing=saved;
-    if(was&&was.state!=='done'&&saved.state==='done'&&saved.recurrence!=='none')await completeTask({...saved,state:was.state});
+    if(was&&was.state!=='done'&&saved.state==='done'&&saved.recurrence!=='none'){
+      await spawnNextOccurrence(saved);
+      feedback('Aufgabe gespeichert; nächste Wiederholung wurde erstellt.');
+    }
     return saved;
   }
 
@@ -669,7 +677,7 @@
   });
 
   $('task-form').addEventListener('submit',async event=>{event.preventDefault();try{await taskFromForm();$('task-detail').close();}catch(error){feedback(error.message);}});
-  $('task-complete-toggle').addEventListener('click',async()=>{if(!taskEditing)return;if(taskEditing.state==='done'){taskEditing=await saveEntry({...taskEditing,state:'open',updatedAt:new Date().toISOString()},'Aufgabe wieder geöffnet.');$('task-state').value='open';$('task-complete-toggle').textContent='';}else{taskEditing=await taskFromForm();await completeTask(taskEditing);$('task-detail').close();}});
+  $('task-complete-toggle').addEventListener('click',async()=>{if(!taskEditing)return;if(taskEditing.state==='done'){taskEditing=await saveEntry({...taskEditing,state:'open',updatedAt:new Date().toISOString()},'Aufgabe wieder geöffnet.');$('task-state').value='open';$('task-complete-toggle').textContent='';}else{const before=taskEditing.state;taskEditing=await taskFromForm();if(before!=='done'&&taskEditing.state!=='done')taskEditing=await completeTask(taskEditing);$('task-detail').close();}});
   $('task-copy').addEventListener('click',()=>duplicateTask().catch(error=>feedback(error.message)));
   $('task-archive').addEventListener('click',async()=>{if(!taskEditing)return;await saveEntry({...taskEditing,archived:true,updatedAt:new Date().toISOString()},'Aufgabe archiviert.');$('task-detail').close();});
   $('close-task-detail').addEventListener('click',()=>$('task-detail').close());
