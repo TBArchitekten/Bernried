@@ -1,5 +1,5 @@
-import PostalMime from 'https://cdn.jsdelivr.net/npm/postal-mime@3.0.0/+esm';
-import MsgReader from 'https://cdn.jsdelivr.net/npm/@kenjiuno/msgreader@1.28.0/+esm';
+import PostalMime from 'https://cdn.jsdelivr.net/npm/postal-mime@3.0.0/src/postal-mime.js';
+import { MsgReader } from 'https://esm.sh/@kenjiuno/msgreader-web-ng@0.2.0-alpha1?bundle';
 
 function stripHtml(value='') {
   if (!value) return '';
