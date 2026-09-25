@@ -74,3 +74,16 @@ test('Planner fields validate progress, recurrence, labels and checklist', () =>
   assert.equal(task.checklist[0].text,'Plan prüfen');
   assert.throws(()=>M.entry(make({recurrence:'hourly'})));
 });
+
+
+test('Planner task fields validate progress, recurrence, labels and checklist', () => {
+  const value=M.entry(make({
+    state:'progress',priority:'important',startDate:'2026-09-24',due:'2026-10-01',recurrence:'weekly',
+    labels:[{id:'l1',name:'TGA',color:'blue'}],showOnCard:true,
+    checklist:[{id:'c1',text:'Durchbrüche prüfen',done:false}]
+  }));
+  assert.equal(value.state,'progress');
+  assert.equal(value.recurrence,'weekly');
+  assert.equal(value.labels[0].name,'TGA');
+  assert.equal(value.checklist[0].done,false);
+});
