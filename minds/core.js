@@ -60,6 +60,14 @@
       alternatives:string(value.alternatives || '', 4000), outcome:string(value.outcome || '', 4000),
       owner:string(value.owner, 160), due:date(value.due), reference:string(value.reference, 500),
       source:value.source === null ? null : source(value.source),
+      bucketId:string(value.bucketId || '', 100),
+      sortOrder:Number.isInteger(value.sortOrder) ? value.sortOrder : 0,
+      priority:['low','normal','important','urgent'].includes(value.priority) ? value.priority : 'normal',
+      checklist:Array.isArray(value.checklist) ? value.checklist.slice(0,100).map((item, index) => ({
+        id:string(String(item?.id || index), 100, true),
+        text:string(String(item?.text || ''), 500, true),
+        done:Boolean(item?.done)
+      })) : [],
       createdAt:stamp(value.createdAt), updatedAt:stamp(value.updatedAt), archived:value.archived
     };
   }

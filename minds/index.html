@@ -19,7 +19,7 @@
         <p class="eyebrow">2401 BERNRIED <span>/</span> LPH 3</p>
         <h1>MINDS<span>//</span>WORK</h1>
       </div>
-      <div class="pilot-label"><span class="dot"></span> Pilot 0.3 · private Supabase memory</div>
+      <div class="pilot-label"><span class="dot"></span> Pilot 0.4 · Planner Board + indexed memory</div>
     </header>
 
     <div class="notice">
@@ -71,14 +71,45 @@
     </section>
 
     <section class="screen" id="screen-todos" hidden>
-      <div class="screen-head">
-        <div><p class="eyebrow">OPERATIVE MEMORY</p><h2>To-Dos</h2><p>Aufgaben behalten ihren Kontext, ihre Quelle und ihre Entstehungsgeschichte.</p></div>
-        <button class="primary" id="new-todo">+ To-Do</button>
+      <div class="planner-head">
+        <div>
+          <p class="eyebrow">OPERATIVE MEMORY</p>
+          <h2>To-Dos</h2>
+        </div>
+        <div class="planner-head-actions">
+          <button class="primary" id="new-todo">+ Aufgabe</button>
+        </div>
       </div>
-      <div class="todo-board">
-        <section class="todo-column"><div class="column-head"><h3>Offen</h3><span id="todo-open-count">0</span></div><div id="todo-open"></div></section>
-        <section class="todo-column"><div class="column-head"><h3>Wartet</h3><span id="todo-waiting-count">0</span></div><div id="todo-waiting"></div></section>
-        <section class="todo-column"><div class="column-head"><h3>Erledigt</h3><span id="todo-done-count">0</span></div><div id="todo-done"></div></section>
+
+      <div class="planner-toolbar">
+        <div class="planner-views" role="tablist" aria-label="Aufgabenansicht">
+          <button id="todo-view-grid" data-todo-view="grid" aria-pressed="false">▦ <span>Raster</span></button>
+          <button id="todo-view-board" data-todo-view="board" aria-pressed="true">▥ <span>Board</span></button>
+          <button class="disabled-view" disabled>▣ <span>Kalender</span></button>
+          <button class="disabled-view" disabled>◔ <span>Diagramme</span></button>
+        </div>
+        <div class="planner-tools">
+          <label class="planner-search">⌕<input id="todo-search" type="search" maxlength="200" placeholder="Aufgaben suchen"></label>
+          <label class="planner-filter">Status
+            <select id="todo-status-filter">
+              <option value="active">Aktiv</option>
+              <option value="all">Alle</option>
+              <option value="open">Offen</option>
+              <option value="waiting">Wartet</option>
+              <option value="done">Erledigt</option>
+            </select>
+          </label>
+          <div class="planner-group">☷ <span>Gruppieren nach:</span> <strong>Bucket</strong></div>
+        </div>
+      </div>
+
+      <div id="todo-board-view" class="planner-board" aria-label="To-Do Board"></div>
+
+      <div id="todo-grid-view" class="planner-grid" hidden>
+        <table>
+          <thead><tr><th></th><th>Aufgabe</th><th>Bucket</th><th>Status</th><th>Priorität</th><th>Termin</th><th>Verantwortlich</th></tr></thead>
+          <tbody id="todo-grid-body"></tbody>
+        </table>
       </div>
     </section>
 
@@ -121,6 +152,10 @@
     <form id="entry-form">
       <div class="dialog-heading"><h2 id="editor-title">Erinnerung erfassen</h2><button type="button" id="close-editor" aria-label="Schließen">×</button></div>
       <div class="form-row"><label>Typ<select id="entry-kind"><option value="task">To-Do</option><option value="decision">Entscheidung</option><option value="lesson">Erfahrung / Fehler</option><option value="procedure">Vorgehensweise</option><option value="question">Frage an AI</option><option value="note">Notiz</option></select></label><label>Status<select id="entry-state"><option value="open">Offen</option><option value="waiting">Wartet auf Rückmeldung</option><option value="done">Abgeschlossen</option></select></label></div>
+      <div id="task-fields">
+        <div class="form-row"><label>Bucket<select id="entry-bucket"></select></label><label>Priorität<select id="entry-priority"><option value="low">Niedrig</option><option value="normal">Normal</option><option value="important">Wichtig</option><option value="urgent">Dringend</option></select></label></div>
+        <label>Checkliste<textarea id="entry-checklist" rows="3" maxlength="6000" placeholder="Ein Punkt pro Zeile"></textarea></label>
+      </div>
       <label>Titel<input id="entry-title" required maxlength="180" placeholder="Was soll MINDS wissen oder verfolgen?"></label>
       <label>Kontext / Begründung<textarea id="entry-body" rows="4" maxlength="12000" placeholder="Was ist passiert? Warum ist es wichtig?"></textarea></label>
       <div id="decision-fields" hidden><label>Alternativen<textarea id="entry-alternatives" rows="2" maxlength="4000"></textarea></label><label>Auswirkungen / nächster Schritt<textarea id="entry-outcome" rows="2" maxlength="4000"></textarea></label></div>
@@ -143,6 +178,15 @@
       <label>Anhänge<input id="mail-files" type="file" multiple></label>
       <p id="mail-form-error" role="alert"></p>
       <div class="dialog-actions"><button type="button" id="cancel-mail-editor">Abbrechen</button><button class="primary" type="submit">Privat speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="bucket-editor" aria-labelledby="bucket-editor-title">
+    <form id="bucket-form">
+      <div class="dialog-heading"><h2 id="bucket-editor-title">Bucket</h2><button type="button" id="close-bucket-editor" aria-label="Schließen">×</button></div>
+      <label>Name<input id="bucket-name" required maxlength="120" placeholder="z. B. Abstimmung Fachplaner"></label>
+      <p id="bucket-form-error" role="alert"></p>
+      <div class="dialog-actions"><button type="button" id="cancel-bucket-editor">Abbrechen</button><button class="primary" type="submit">Speichern</button></div>
     </form>
   </dialog>
 </body>
