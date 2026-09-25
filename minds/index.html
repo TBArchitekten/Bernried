@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; connect-src 'self' https://mmrteayudgywutghpdev.supabase.co wss://mmrteayudgywutghpdev.supabase.co; img-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Bernried · MINDS//WORK</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="core.js" defer></script>
+  <script src="store.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -17,12 +19,11 @@
         <p class="eyebrow">2401 BERNRIED <span>/</span> LPH 3</p>
         <h1>MINDS<span>//</span>WORK</h1>
       </div>
-      <div class="pilot-label"><span class="dot"></span> Pilot 0.2 · lokales Projektgedächtnis</div>
+      <div class="pilot-label"><span class="dot"></span> Pilot 0.3 · private Supabase memory</div>
     </header>
 
     <div class="notice">
-      <strong>Arbeitsprototyp.</strong> MINDS ist jetzt als Assistent gedacht; Memory, Decisions und Questions laufen im Hintergrund.
-      Daten liegen in diesem Pilot weiterhin nur in diesem Browser. E-Mails deshalb vorerst nur mit unkritischen Testdaten erproben.
+      <strong>Private Memory aktiv.</strong> To-Dos, Memory, Mail und Gespräche werden nach Anmeldung in Supabase gespeichert und per Row Level Security auf dein Bernried-Konto begrenzt. Lokale Pilotdaten können einmalig migriert werden.
     </div>
 
     <nav class="sections" aria-label="MINDS-Bereiche">
@@ -86,7 +87,7 @@
         <div><p class="eyebrow">PROJECT CORRESPONDENCE</p><h2>Mail</h2><p>Später private, durchsuchbare Projektkorrespondenz. Im Pilot nur lokaler Browser-Speicher.</p></div>
         <button class="primary" id="new-mail">+ E-Mail erfassen</button>
       </div>
-      <div class="mail-warning"><strong>Noch kein privater Server-Speicher.</strong> Keine vertraulichen Projektmails hochladen. Diese Ansicht testet zunächst Struktur, Suche und die Verbindung zum Assistenten.</div>
+      <div class="mail-warning private-ok"><strong>Privater Server-Speicher.</strong> Mailtexte und Anhänge liegen im privaten MINDS-Bereich von Supabase; Zugriff erfordert Anmeldung und Projektberechtigung.</div>
       <div class="mail-toolbar">
         <label>E-Mails durchsuchen<input id="mail-search" type="search" maxlength="200" placeholder="Absender, Betreff oder Inhalt …"></label>
         <span id="mail-count">0 E-Mails</span>
@@ -128,7 +129,7 @@
       <label>Fundstelle / Gespräch / Datum<input id="entry-reference" maxlength="500" placeholder="z. B. E-Mail vom …, Seite 2, Achse B–C"></label>
       <p class="small">Eine Quelle verknüpft den Eintrag mit einem Dokument. Ihr Inhalt wird im Pilot nicht automatisch gelesen oder bestätigt.</p>
       <p id="form-error" role="alert"></p>
-      <div class="dialog-actions"><button type="button" id="cancel-editor">Abbrechen</button><button class="primary" type="submit">Lokal speichern</button></div>
+      <div class="dialog-actions"><button type="button" id="cancel-editor">Abbrechen</button><button class="primary" type="submit">In MINDS speichern</button></div>
     </form>
   </dialog>
 
@@ -136,10 +137,12 @@
     <form id="mail-form">
       <div class="dialog-heading"><h2 id="mail-editor-title">E-Mail erfassen</h2><button type="button" id="close-mail-editor" aria-label="Schließen">×</button></div>
       <div class="form-row"><label>Absender<input id="mail-sender" maxlength="240" placeholder="Name / E-Mail"></label><label>Datum<input id="mail-date" type="date" min="2000-01-01" max="2100-12-31"></label></div>
+      <label>Empfänger<input id="mail-recipients" maxlength="1000" placeholder="Name / E-Mail"></label>
       <label>Betreff<input id="mail-subject" required maxlength="300"></label>
-      <label>Inhalt<textarea id="mail-body" rows="10" maxlength="30000" placeholder="Für den Pilot nur unkritischen Testinhalt einfügen."></textarea></label>
+      <label>Inhalt<textarea id="mail-body" rows="10" maxlength="100000" placeholder="E-Mail-Inhalt einfügen."></textarea></label>
+      <label>Anhänge<input id="mail-files" type="file" multiple></label>
       <p id="mail-form-error" role="alert"></p>
-      <div class="dialog-actions"><button type="button" id="cancel-mail-editor">Abbrechen</button><button class="primary" type="submit">Lokal speichern</button></div>
+      <div class="dialog-actions"><button type="button" id="cancel-mail-editor">Abbrechen</button><button class="primary" type="submit">Privat speichern</button></div>
     </form>
   </dialog>
 </body>

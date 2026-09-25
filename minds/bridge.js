@@ -1,5 +1,5 @@
-/* Private-project bridge for MINDS//WORK. UI gate uses the existing Supabase session.
-   Real confidentiality still requires server-side RLS/storage policies before storing sensitive data. */
+/* Private-project bridge for MINDS//WORK.
+   The existing Supabase session gates the UI; private MINDS data is additionally protected server-side by RLS and a private Storage bucket. */
 (() => {
   'use strict';
   const nav = document.querySelector('.site-nav');
