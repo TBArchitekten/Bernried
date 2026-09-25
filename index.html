@@ -98,7 +98,7 @@ document.getElementById('imageFile').onchange=event=>{if(event.target.files[0])a
 document.getElementById('editContact').onclick=()=>document.getElementById('contactData').contentEditable='true';document.getElementById('finishContactEdit').onclick=()=>run(async()=>{document.getElementById('contactData').contentEditable='false';const {error}=await supabaseClient.from('projects').update({contact:readContact()}).eq('id',project.id);if(error)throw error},'Kontaktdaten gespeichert.');
 loadContent().catch(error=>{console.error(error);status('Inhalte konnten nicht geladen werden.',true)});const hash=location.hash.replace('#','');if(hash&&document.getElementById('view-'+hash))showView(hash);
 </script>
-<!-- Optional pilot: open ?minds=1#minds. The existing hub works without this module. -->
+<!-- MINDS//WORK pilot: private assistant entry is gated by the existing Admin session. -->
 <script src="minds/bridge.js" defer></script>
 </body>
 </html>

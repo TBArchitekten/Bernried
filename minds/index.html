@@ -13,49 +13,133 @@
 <body>
   <main class="workspace">
     <header class="masthead">
-      <div><p class="eyebrow">2401 BERNRIED <span> / </span> WORKING MEMORY</p><h1>MINDS<span>//</span>WORK</h1></div>
-      <div class="pilot-label"><span class="dot"></span> Prototyp 0.1 · lokal</div>
+      <div>
+        <p class="eyebrow">2401 BERNRIED <span>/</span> LPH 3</p>
+        <h1>MINDS<span>//</span>WORK</h1>
+      </div>
+      <div class="pilot-label"><span class="dot"></span> Pilot 0.2 · lokales Projektgedächtnis</div>
     </header>
-    <div class="notice"><strong>Dein Arbeitsgedächtnis in diesem Browser.</strong> Einträge werden hier gespeichert, nicht an einen Server gesendet. Keine Anmeldung, keine Synchronisierung, kein geschützter Team-Speicher. Für den Pilot nur unkritische Inhalte verwenden und regelmäßig exportieren.</div>
+
+    <div class="notice">
+      <strong>Arbeitsprototyp.</strong> MINDS ist jetzt als Assistent gedacht; Memory, Decisions und Questions laufen im Hintergrund.
+      Daten liegen in diesem Pilot weiterhin nur in diesem Browser. E-Mails deshalb vorerst nur mit unkritischen Testdaten erproben.
+    </div>
+
     <nav class="sections" aria-label="MINDS-Bereiche">
-      <button data-screen="today" aria-pressed="true">Today <span id="open-count">0</span></button>
+      <button data-screen="assistant" aria-pressed="true">MINDS</button>
+      <button data-screen="todos" aria-pressed="false">To-Dos <span id="open-count">0</span></button>
+      <button data-screen="mail" aria-pressed="false">Mail <span id="mail-nav-count">0</span></button>
       <button data-screen="memory" aria-pressed="false">Memory</button>
-      <button data-screen="decision" aria-pressed="false">Decisions</button>
-      <button data-screen="question" aria-pressed="false">Questions</button>
-      <button data-screen="sources" aria-pressed="false">Sources</button>
     </nav>
-    <div class="toolbar">
-      <label class="search-label">Gedächtnis durchsuchen<input id="search" type="search" placeholder="Begriff, Verantwortliche oder Quelle …" maxlength="200"></label>
-      <button class="primary" id="new-entry">+ Erinnerung erfassen</button>
-    </div>
-    <div class="layout">
-      <section class="feed" aria-labelledby="screen-title">
-        <div class="feed-heading"><div><h2 id="screen-title">Was braucht deine Aufmerksamkeit?</h2><p id="screen-description">Offene Punkte und Wiedervorlagen bis in sieben Tagen.</p></div><label id="archive-label"><input id="show-archived" type="checkbox"> Archiv zeigen</label></div>
-        <p id="result-summary" class="muted" aria-live="polite"></p>
-        <div id="entries"></div>
-        <section id="source-panel" hidden><p id="source-note"></p><button id="refresh-sources">Quellen aktualisieren</button><div id="sources"></div></section>
+
+    <section class="screen active" id="screen-assistant">
+      <div class="context-strip">
+        <div><strong id="metric-open">0</strong><span>offene To-Dos</span></div>
+        <div><strong id="metric-waiting">0</strong><span>warte auf Rückmeldung</span></div>
+        <div><strong id="metric-decisions">0</strong><span>Entscheidungen</span></div>
+        <div><strong id="metric-mail">0</strong><span>E-Mails im Pilot</span></div>
+      </div>
+      <div class="assistant-layout">
+        <section class="conversation">
+          <div class="conversation-head">
+            <div><p class="eyebrow">MY PROJECT MEMORY</p><h2>Was möchtest du über Bernried wissen oder erledigen?</h2></div>
+            <button class="quiet" id="clear-chat">Gespräch leeren</button>
+          </div>
+          <div class="chat-feed" id="chat-feed" aria-live="polite"></div>
+          <div class="quick-actions" aria-label="Schnellfragen">
+            <button data-prompt="Was ist aktuell offen?">Was ist offen?</button>
+            <button data-prompt="Worauf warte ich gerade?">Worauf warte ich?</button>
+            <button data-prompt="Welche Entscheidungen wurden zuletzt getroffen?">Letzte Entscheidungen</button>
+            <button data-prompt="Welche Themen frage ich wiederholt?">Fragensignale</button>
+          </div>
+          <form id="ask-form" class="ask-box">
+            <div class="ask-modes">
+              <label><input type="radio" name="ask-mode" value="memory" checked> My project memory</label>
+              <label class="disabled"><input id="beyond-mode" type="radio" name="ask-mode" value="external" disabled> Beyond my memory · später</label>
+            </div>
+            <textarea id="ask-input" rows="3" maxlength="1200" placeholder="z. B. Was hat Herr X zu Thema Y geschrieben? · Füge mir ein To-Do hinzu · Was muss ich bei diesem Thema noch bedenken?"></textarea>
+            <div class="ask-actions"><span>Fragen werden als Projektsignal gespeichert.</span><button class="primary" type="submit">Fragen</button></div>
+          </form>
+        </section>
+        <aside>
+          <section class="side-card"><p class="eyebrow">HEUTE</p><div id="assistant-next"></div></section>
+          <section class="side-card"><p class="eyebrow">AI QUESTION SIGNALS</p><div id="question-signals"></div></section>
+          <section class="side-card"><p class="eyebrow">PROJEKT</p><h3 id="project-name">Bernried</h3><p>Planstände und Modell bleiben im Project Hub. MINDS merkt sich ihren Arbeitskontext.</p><a href="../index.html" target="_top">Zum Project Hub ↗</a></section>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-todos" hidden>
+      <div class="screen-head">
+        <div><p class="eyebrow">OPERATIVE MEMORY</p><h2>To-Dos</h2><p>Aufgaben behalten ihren Kontext, ihre Quelle und ihre Entstehungsgeschichte.</p></div>
+        <button class="primary" id="new-todo">+ To-Do</button>
+      </div>
+      <div class="todo-board">
+        <section class="todo-column"><div class="column-head"><h3>Offen</h3><span id="todo-open-count">0</span></div><div id="todo-open"></div></section>
+        <section class="todo-column"><div class="column-head"><h3>Wartet</h3><span id="todo-waiting-count">0</span></div><div id="todo-waiting"></div></section>
+        <section class="todo-column"><div class="column-head"><h3>Erledigt</h3><span id="todo-done-count">0</span></div><div id="todo-done"></div></section>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-mail" hidden>
+      <div class="screen-head">
+        <div><p class="eyebrow">PROJECT CORRESPONDENCE</p><h2>Mail</h2><p>Später private, durchsuchbare Projektkorrespondenz. Im Pilot nur lokaler Browser-Speicher.</p></div>
+        <button class="primary" id="new-mail">+ E-Mail erfassen</button>
+      </div>
+      <div class="mail-warning"><strong>Noch kein privater Server-Speicher.</strong> Keine vertraulichen Projektmails hochladen. Diese Ansicht testet zunächst Struktur, Suche und die Verbindung zum Assistenten.</div>
+      <div class="mail-toolbar">
+        <label>E-Mails durchsuchen<input id="mail-search" type="search" maxlength="200" placeholder="Absender, Betreff oder Inhalt …"></label>
+        <span id="mail-count">0 E-Mails</span>
+      </div>
+      <div id="mail-list"></div>
+    </section>
+
+    <section class="screen" id="screen-memory" hidden>
+      <div class="screen-head">
+        <div><p class="eyebrow">BACKGROUND MEMORY</p><h2>Projektgedächtnis</h2><p>Hier kannst du sehen, was der Assistent im Hintergrund als Aufgabe, Entscheidung, Erfahrung, Vorgehensweise oder Frage kennt.</p></div>
+        <button class="primary" id="new-entry">+ Erinnerung erfassen</button>
+      </div>
+      <div class="memory-toolbar">
+        <label>Gedächtnis durchsuchen<input id="search" type="search" placeholder="Begriff, Beteiligte oder Quelle …" maxlength="200"></label>
+        <label>Typ<select id="memory-filter"><option value="all">Alles</option><option value="decision">Entscheidungen</option><option value="lesson">Erfahrungen / Fehler</option><option value="procedure">Vorgehensweisen</option><option value="question">AI-Fragen</option><option value="sources">Quellen</option></select></label>
+        <label class="archive-check"><input id="show-archived" type="checkbox"> Archiv</label>
+      </div>
+      <p id="result-summary" class="muted" aria-live="polite"></p>
+      <div id="entries"></div>
+      <section id="source-panel" hidden><p id="source-note"></p><button id="refresh-sources">Quellen aktualisieren</button><div id="sources"></div></section>
+      <section class="backup">
+        <div><p class="eyebrow">BACKUP</p><p>Der Export enthält das Projektgedächtnis im Klartext.</p></div>
+        <div class="backup-actions"><button id="export">Memory JSON exportieren</button><label class="file-button">Memory JSON importieren<input id="import" type="file" accept="application/json,.json"></label></div>
       </section>
-      <aside>
-        <section class="side-card"><p class="eyebrow">PROJEKTKONTEXT</p><h2 id="project-name">Bernried</h2><p>Dokumente bleiben im Project Hub. Erinnerungen halten fest, was sie für deine Arbeit bedeuten.</p><a href="../index.html" target="_top">Zum Project Hub ↗</a></section>
-        <section class="side-card"><p class="eyebrow">ASK MINDS · AUSBLICK</p><h3>My project memory</h3><p>Heute: Textsuche in deinen Einträgen. Später: belegte Antworten mit Quellen.</p><h3>Beyond my memory</h3><p>Externe Recherche bleibt getrennt. In diesem Prototyp ist noch keine KI verbunden.</p></section>
-        <section class="side-card"><p class="eyebrow">DEINE DATEN</p><div class="backup-actions"><button id="export">JSON exportieren</button><label class="file-button">JSON importieren<input id="import" type="file" accept="application/json,.json"></label></div><p class="small">Import ergänzt neue Einträge. Vorhandene IDs werden nicht überschrieben. Exportdateien enthalten deine Notizen im Klartext.</p></section>
-      </aside>
-    </div>
+    </section>
+
     <p id="feedback" role="status" aria-live="polite"></p>
   </main>
+
   <dialog id="editor" aria-labelledby="editor-title">
     <form id="entry-form">
       <div class="dialog-heading"><h2 id="editor-title">Erinnerung erfassen</h2><button type="button" id="close-editor" aria-label="Schließen">×</button></div>
-      <div class="form-row"><label>Typ<select id="entry-kind"><option value="task">Offener Punkt</option><option value="decision">Entscheidung</option><option value="lesson">Erfahrung / Fehler</option><option value="procedure">Vorgehensweise</option><option value="question">Frage an KI</option><option value="note">Notiz</option></select></label><label>Status<select id="entry-state"><option value="open">Offen</option><option value="waiting">Wartet auf Rückmeldung</option><option value="done">Abgeschlossen</option></select></label></div>
-      <label>Titel<input id="entry-title" required maxlength="180" placeholder="Was soll das Projekt sich merken?"></label>
-      <label>Kontext / Begründung<textarea id="entry-body" rows="4" maxlength="12000" placeholder="Was ist passiert? Warum ist es wichtig? Welche Information fehlt?"></textarea></label>
+      <div class="form-row"><label>Typ<select id="entry-kind"><option value="task">To-Do</option><option value="decision">Entscheidung</option><option value="lesson">Erfahrung / Fehler</option><option value="procedure">Vorgehensweise</option><option value="question">Frage an AI</option><option value="note">Notiz</option></select></label><label>Status<select id="entry-state"><option value="open">Offen</option><option value="waiting">Wartet auf Rückmeldung</option><option value="done">Abgeschlossen</option></select></label></div>
+      <label>Titel<input id="entry-title" required maxlength="180" placeholder="Was soll MINDS wissen oder verfolgen?"></label>
+      <label>Kontext / Begründung<textarea id="entry-body" rows="4" maxlength="12000" placeholder="Was ist passiert? Warum ist es wichtig?"></textarea></label>
       <div id="decision-fields" hidden><label>Alternativen<textarea id="entry-alternatives" rows="2" maxlength="4000"></textarea></label><label>Auswirkungen / nächster Schritt<textarea id="entry-outcome" rows="2" maxlength="4000"></textarea></label></div>
-      <div class="form-row"><label>Verantwortlich / beteiligt<input id="entry-owner" maxlength="160"></label><label>Wiedervorlage / Termin<input id="entry-due" type="date" min="2000-01-01" max="2100-12-31"></label></div>
+      <div class="form-row"><label>Verantwortlich / beteiligt<input id="entry-owner" maxlength="160"></label><label>Termin / Wiedervorlage<input id="entry-due" type="date" min="2000-01-01" max="2100-12-31"></label></div>
       <label>Quelle aus dem Projekt<select id="entry-source"><option value="">Eigene Notiz · ohne Dokumentbeleg</option></select></label>
-      <label>Fundstelle / Gespräch / Datum<input id="entry-reference" maxlength="500" placeholder="z. B. Seite 2, Achse B–C oder Besprechung vom …"></label>
-      <p class="small">Eine Quelle verknüpft den Eintrag mit einem Dokument. Ihr Inhalt wird nicht automatisch gelesen oder bestätigt.</p>
+      <label>Fundstelle / Gespräch / Datum<input id="entry-reference" maxlength="500" placeholder="z. B. E-Mail vom …, Seite 2, Achse B–C"></label>
+      <p class="small">Eine Quelle verknüpft den Eintrag mit einem Dokument. Ihr Inhalt wird im Pilot nicht automatisch gelesen oder bestätigt.</p>
       <p id="form-error" role="alert"></p>
       <div class="dialog-actions"><button type="button" id="cancel-editor">Abbrechen</button><button class="primary" type="submit">Lokal speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="mail-editor" aria-labelledby="mail-editor-title">
+    <form id="mail-form">
+      <div class="dialog-heading"><h2 id="mail-editor-title">E-Mail erfassen</h2><button type="button" id="close-mail-editor" aria-label="Schließen">×</button></div>
+      <div class="form-row"><label>Absender<input id="mail-sender" maxlength="240" placeholder="Name / E-Mail"></label><label>Datum<input id="mail-date" type="date" min="2000-01-01" max="2100-12-31"></label></div>
+      <label>Betreff<input id="mail-subject" required maxlength="300"></label>
+      <label>Inhalt<textarea id="mail-body" rows="10" maxlength="30000" placeholder="Für den Pilot nur unkritischen Testinhalt einfügen."></textarea></label>
+      <p id="mail-form-error" role="alert"></p>
+      <div class="dialog-actions"><button type="button" id="cancel-mail-editor">Abbrechen</button><button class="primary" type="submit">Lokal speichern</button></div>
     </form>
   </dialog>
 </body>
