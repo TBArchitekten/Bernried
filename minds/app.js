@@ -232,14 +232,42 @@
   }
 
   function todoFiltered(){
-    const q=$('todo-search')?.value||'',status=$('todo-status-filter')?.value||'active',priority=$('todo-priority-filter')?.value||'all';
+    const q=$('todo-search')?.value||'';
+    const status=$('todo-status-filter')?.value||'active';
+    const priority=$('todo-priority-filter')?.value||'all';
+    const bucket=$('todo-bucket-filter')?.value||'all';
+    const owner=$('todo-owner-filter')?.value||'all';
+    const label=$('todo-label-filter')?.value||'all';
+    const due=$('todo-due-filter')?.value||'all';
     return activeTasks().filter(item=>{
       if(q&&!M.matches(item,q))return false;
       if(status==='active'&&item.state==='done')return false;
       if(status!=='active'&&status!=='all'&&item.state!==status)return false;
       if(priority!=='all'&&item.priority!==priority)return false;
+      if(bucket!=='all'&&item.bucketId!==bucket)return false;
+      if(owner!=='all'&&(owner==='__none'?!item.owner.trim():item.owner.trim()!==owner))return false;
+      if(label!=='all'&&(label==='__none'?Boolean((item.labels||[]).length):!(item.labels||[]).some(x=>x.name===label)))return false;
+      if(due!=='all'&&dueGroup(item)!==due)return false;
       return true;
     });
+  }
+
+  function refillSelect(select,items,placeholder='Alle'){
+    if(!select)return;
+    const current=select.value;
+    select.replaceChildren(new Option(placeholder,'all'));
+    items.forEach(item=>select.add(new Option(item.label,item.value)));
+    if([...select.options].some(option=>option.value===current))select.value=current;
+  }
+
+  function renderTodoFilterOptions(){
+    refillSelect($('todo-bucket-filter'),buckets.map(x=>({value:x.id,label:x.name})));
+    const owners=[...new Set(activeTasks().map(x=>x.owner.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de')).map(x=>({value:x,label:x}));
+    owners.push({value:'__none',label:'Nicht zugewiesen'});
+    refillSelect($('todo-owner-filter'),owners);
+    const names=[...new Set(activeTasks().flatMap(x=>(x.labels||[]).map(l=>l.name)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de')).map(x=>({value:x,label:x}));
+    names.push({value:'__none',label:'Ohne Bezeichnung'});
+    refillSelect($('todo-label-filter'),names);
   }
 
   function dueGroup(item){
@@ -465,6 +493,7 @@
 
   function renderTodos(){
     if(!$('todo-board-view'))return;
+    renderTodoFilterOptions();
     for(const view of ['board','grid','calendar','charts']){
       const host=$(view==='board'?'todo-board-view':view==='grid'?'todo-grid-view':'todo-'+view+'-view');
       host.hidden=todoView!==view;
@@ -719,7 +748,19 @@
   document.querySelectorAll('[data-todo-view]').forEach(button=>button.addEventListener('click',()=>{todoView=button.dataset.todoView;renderTodos();}));
   $('new-todo').addEventListener('click',()=>openTaskDetail(null,{bucketId:buckets[0]?.id||''}));
   $('new-entry').addEventListener('click',()=>editEntry(null));$('new-mail').addEventListener('click',openMailEditor);
-  $('todo-search').addEventListener('input',renderTodos);$('todo-status-filter').addEventListener('change',renderTodos);$('todo-priority-filter').addEventListener('change',renderTodos);$('todo-group-by').addEventListener('change',renderTodos);
+  $('todo-search').addEventListener('input',renderTodos);
+  $('todo-status-filter').addEventListener('change',renderTodos);
+  $('todo-priority-filter').addEventListener('change',renderTodos);
+  $('todo-bucket-filter').addEventListener('change',renderTodos);
+  $('todo-owner-filter').addEventListener('change',renderTodos);
+  $('todo-label-filter').addEventListener('change',renderTodos);
+  $('todo-due-filter').addEventListener('change',renderTodos);
+  $('todo-group-by').addEventListener('change',renderTodos);
+  $('todo-filter-toggle').addEventListener('click',()=>{$('todo-filter-popover').hidden=!$('todo-filter-popover').hidden;});
+  $('todo-filter-reset').addEventListener('click',()=>{
+    for(const id of ['todo-priority-filter','todo-bucket-filter','todo-owner-filter','todo-label-filter','todo-due-filter'])$(id).value='all';
+    renderTodos();
+  });
   $('calendar-prev').addEventListener('click',()=>{calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()-1,1);renderCalendar();});
   $('calendar-next').addEventListener('click',()=>{calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()+1,1);renderCalendar();});
   for(const id of ['close-editor','cancel-editor'])$(id).addEventListener('click',()=>$('editor').close());
