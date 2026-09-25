@@ -68,9 +68,12 @@
     return {
       id:string(value.id, 100, true),
       sender:string(value.sender || '', 240),
+      recipients:string(value.recipients || '', 1000),
       subject:string(value.subject, 300, true),
-      body:string(value.body || '', 30000),
+      body:string(value.body || '', 100000),
       date:date(value.date || ''),
+      messageId:string(value.messageId || '', 1000),
+      threadKey:string(value.threadKey || '', 1000),
       createdAt:stamp(value.createdAt),
       updatedAt:stamp(value.updatedAt),
       archived:Boolean(value.archived)
@@ -122,7 +125,7 @@
     return words(query).every(word => text.includes(word));
   }
   function mailMatches(item, query) {
-    const text = normalize([item.sender, item.subject, item.body, item.date].join(' '));
+    const text = normalize([item.sender, item.recipients, item.subject, item.body, item.date, item.messageId, item.threadKey].join(' '));
     return words(query).every(word => text.includes(word));
   }
   function todayLocal(now = new Date()) {
