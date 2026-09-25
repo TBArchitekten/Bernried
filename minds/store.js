@@ -376,21 +376,23 @@
     return r.data.signedUrl;
   }
 
-  async function uploadRawMailFile(mailId,file) {
-    if(!mailId||!file) throw new Error('Mail und Datei erforderlich.');
+  async function ingestMailFile(file) {
+    if(!file) throw new Error('E-Mail-Datei fehlt.');
+    const lower=String(file.name||'').toLowerCase();
+    if(!lower.endsWith('.eml')&&!lower.endsWith('.msg')) throw new Error('Nur .eml und Outlook .msg werden unterstützt.');
     const safe=file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180);
-    const path=`${PROJECT_SLUG}/mail/${mailId}/raw-${crypto.randomUUID()}-${safe}`;
+    const path=`${PROJECT_SLUG}/import/${crypto.randomUUID()}/${safe}`;
     const upload=await client.storage.from(PRIVATE_BUCKET).upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
-    if(upload.error) throw new Error('Originalmail konnte nicht hochgeladen werden: '+upload.error.message);
-    const row=await client.from('minds_mail_files').insert({
-      project_id:project.id,mail_id:mailId,uploaded_by:user.id,storage_path:path,
-      filename:file.name,mime_type:file.type||'application/octet-stream',size_bytes:file.size||0
-    }).select('*').single();
-    if(row.error){
-      await client.storage.from(PRIVATE_BUCKET).remove([path]);
-      throw new Error('Originalmail konnte nicht registriert werden: '+row.error.message);
+    if(upload.error) throw new Error('E-Mail konnte nicht hochgeladen werden: '+upload.error.message);
+    try {
+      const result=await client.functions.invoke('minds-ingest-mail',{body:{storagePath:path,originalName:file.name}});
+      if(result.error) throw new Error(result.error.message||'Importfunktion fehlgeschlagen.');
+      if(result.data?.error) throw new Error(result.data.error);
+      return {mail:mailFromRow(result.data.mail),duplicate:Boolean(result.data.duplicate),attachments:result.data.attachments||0,chunks:result.data.chunks||0};
+    } catch(error) {
+      await client.storage.from(PRIVATE_BUCKET).remove([path]).catch(()=>{});
+      throw error;
     }
-    return row.data;
   }
 
   async function uploadMailFile(mailId, file) {
@@ -414,7 +416,7 @@
     client, init, loadEntries, loadMails, loadBuckets, saveBucket, archiveBucket, saveEntry, saveMail,
     loadMessages, appendMessage, newConversation, migrateLocal,
     loadTaskComments, addTaskComment, loadTaskFiles, uploadTaskFile, addTaskLink, signedTaskFile,
-    uploadRawMailFile, uploadMailFile, indexMailText, searchChunks,
+    ingestMailFile, uploadMailFile, indexMailText, searchChunks,
     get project(){return project;}, get user(){return user;}
   };
 })();
