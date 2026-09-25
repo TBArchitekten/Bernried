@@ -1,5 +1,50 @@
 # MINDS//WORK sobre Bernried
 
+## Estado actual: Pilot 0.3 · Private Memory
+
+El Pilot 0.3 mueve **Memory, To-Dos, Mail y conversaciones** fuera de `localStorage` y los persiste en el proyecto Supabase `Bernried Project Hub`.
+
+La interfaz sigue alojada en GitHub Pages, pero el contenido privado no está en el repositorio. El navegador utiliza únicamente la publishable key; la protección real se aplica en PostgreSQL mediante Row Level Security y en Storage mediante un bucket privado.
+
+### Seguridad implementada
+
+- tablas privadas: `minds_entries`, `minds_mails`, `minds_conversations`, `minds_messages`, `minds_mail_files`, `minds_events`;
+- todas las tablas tienen RLS;
+- `anon` no tiene permisos sobre las tablas MINDS;
+- acceso condicionado a pertenencia del usuario autenticado en `project_admins`;
+- las conversaciones son además privadas por usuario;
+- bucket `minds-private` con `public = false`;
+- acceso a objetos limitado a usuarios autorizados del proyecto cuyo slug coincide con la primera carpeta del objeto;
+- archivos de correo se almacenan bajo `bernried/mail/<mail-id>/...`;
+- la service-role key no aparece en el frontend;
+- cambios relevantes generan eventos append-only en `minds_events`.
+
+### Migración desde el Pilot 0.2
+
+Al abrir MINDS por primera vez después de esta actualización, el cliente busca las claves locales antiguas `minds_work_bernried_v1` y `minds_work_bernried_mail_v1`. Si contienen datos, los migra una vez a Supabase y marca localmente que la migración se completó. Los datos locales antiguos no se borran automáticamente.
+
+### Qué cambia para el usuario
+
+- To-Dos, Memory y Mail dejan de depender del navegador;
+- las conversaciones MINDS se conservan en Supabase;
+- iniciar un nuevo Gespräch archiva la conversación anterior en vez de borrarla;
+- Mail permite texto privado y adjuntos en Storage privado;
+- la búsqueda actual sigue siendo determinista sobre los registros del proyecto;
+- todavía no hay LLM conectado ni lectura automática de adjuntos/PDF.
+
+### Regla epistemológica
+
+Se mantiene la separación entre PROJECT MEMORY, OFFICE MEMORY (futuro), EXTERNAL / NORMATIVE (futuro) y MINDS SUGGESTION.
+
+### Siguiente fase
+
+El siguiente salto es ingestión estructurada de emails/documentos, citación de fragmentos, búsqueda semántica/full-text, conexión de un LLM para My project memory, Beyond my memory separado, redacción contextual de emails y recordatorios/recurrencias.
+
+---
+
+## Registro del Pilot 0.2
+
+
 ## Estado actual: Pilot 0.2
 
 MINDS//WORK ya no se concibe como una base de datos que el Projektleiter debe mantener manualmente. La interfaz visible es un **asistente de proyecto**; Memory, Decisions, Questions y Sources siguen existiendo, pero pasan a segundo plano como órganos internos del sistema.
