@@ -628,15 +628,18 @@
     status.textContent='Importiere '+files.length+' E-Mail'+(files.length===1?'':'s')+' …';
     for(const file of files){
       try{
-        if(!window.MindsMailImport)throw new Error('E-Mail-Parser ist noch nicht geladen.');
-        const parsed=await window.MindsMailImport.parseFile(file);
-        if(parsed.mail.messageId&&mails.some(x=>x.messageId&&x.messageId===parsed.mail.messageId)){skipped++;continue;}
-        const now=new Date().toISOString(),mail=M.mail({id:crypto.randomUUID(),sender:parsed.mail.sender||'',recipients:parsed.mail.recipients||'',subject:parsed.mail.subject||file.name,body:parsed.mail.body||'',date:parsed.mail.date||'',messageId:parsed.mail.messageId||'',threadKey:parsed.mail.threadKey||'',createdAt:now,updatedAt:now,archived:false});
-        const saved=await S.saveMail(mail);
-        await S.uploadRawMailFile(saved.id,file);
-        for(const attachment of parsed.attachments||[])await S.uploadMailFile(saved.id,attachment);
-        mails.unshift(saved);imported++;renderMail();metrics();
-      }catch(error){failed++;console.error('Mail import failed',file.name,error);feedback(file.name+': '+error.message);}
+        const result=await S.ingestMailFile(file);
+        if(result.duplicate){
+          skipped++;
+          if(!mails.some(x=>x.id===result.mail.id))mails.unshift(result.mail);
+        }else{
+          imported++;
+          mails.unshift(result.mail);
+        }
+        renderMail();metrics();
+      }catch(error){
+        failed++;console.error('Mail import failed',file.name,error);feedback(file.name+': '+error.message);
+      }
       status.textContent='Import: '+imported+' gespeichert · '+skipped+' bereits vorhanden · '+failed+' Fehler';
     }
     renderAll();
