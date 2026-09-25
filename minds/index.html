@@ -95,15 +95,17 @@
               <option value="done">Abgeschlossen</option>
             </select>
           </label>
-          <label class="planner-filter">Priorität
-            <select id="todo-priority-filter">
-              <option value="all">Alle</option>
-              <option value="urgent">Dringend</option>
-              <option value="important">Wichtig</option>
-              <option value="medium">Mittel</option>
-              <option value="low">Niedrig</option>
-            </select>
-          </label>
+          <div class="planner-filter-popover-wrap">
+            <button type="button" id="todo-filter-toggle" class="planner-filter-button">☰ <span>Filter</span></button>
+            <div id="todo-filter-popover" class="planner-filter-popover" hidden>
+              <label>Priorität<select id="todo-priority-filter"><option value="all">Alle</option><option value="urgent">Dringend</option><option value="important">Wichtig</option><option value="medium">Mittel</option><option value="low">Niedrig</option></select></label>
+              <label>Bucket<select id="todo-bucket-filter"><option value="all">Alle</option></select></label>
+              <label>Zugewiesen an<select id="todo-owner-filter"><option value="all">Alle</option></select></label>
+              <label>Bezeichnung<select id="todo-label-filter"><option value="all">Alle</option></select></label>
+              <label>Fälligkeit<select id="todo-due-filter"><option value="all">Alle</option><option value="overdue">Überfällig</option><option value="today">Heute</option><option value="week">Nächste 7 Tage</option><option value="later">Später</option><option value="none">Ohne Termin</option></select></label>
+              <button type="button" id="todo-filter-reset" class="quiet">Filter zurücksetzen</button>
+            </div>
+          </div>
           <label class="planner-group">☷ <span>Gruppieren nach:</span>
             <select id="todo-group-by">
               <option value="bucket">Bucket</option>
