@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const M = require('../minds/core.js');
 const make = (patch = {}) => ({id:'one',kind:'task',state:'open',title:'Prüfung der Höhen',body:'Achse B',
   alternatives:'',outcome:'',owner:'Projektleitung',due:'',reference:'Seite 2',source:null,
+  bucketId:'',sortOrder:0,priority:'medium',startDate:'',recurrence:'none',labels:[],showOnCard:false,checklist:[],
   createdAt:'2026-09-24T10:00:00.000Z',updatedAt:'2026-09-24T10:00:00.000Z',archived:false,...patch});
 const serialize = entries => JSON.stringify(M.envelope(entries));
 
@@ -59,4 +60,17 @@ test('oversized records or files cannot silently exceed the import limit', () =>
   const many=Array.from({length:180},(_,n)=>make({id:String(n),body:'x'.repeat(12000)}));
   const store={getItem:()=>null,setItem:()=>assert.fail('Must not write oversized data')};
   assert.throws(()=>M.save(store,null,many),/voll/);
+});
+
+test('Planner fields validate progress, recurrence, labels and checklist', () => {
+  const task = M.entry(make({
+    state:'progress',priority:'urgent',startDate:'2026-09-25',due:'2026-09-30',recurrence:'weekly',
+    labels:[{id:'l1',name:'TWP',color:'blue'}],
+    showOnCard:true,checklist:[{id:'c1',text:'Plan prüfen',done:false}]
+  }));
+  assert.equal(task.state,'progress');
+  assert.equal(task.recurrence,'weekly');
+  assert.equal(task.labels[0].name,'TWP');
+  assert.equal(task.checklist[0].text,'Plan prüfen');
+  assert.throws(()=>M.entry(make({recurrence:'hourly'})));
 });
