@@ -190,3 +190,54 @@ Bestehende E-Mails werden beim ersten Start von 0.4 einmalig indexiert. Die Assi
 Die geplante Pipeline bleibt:
 
 `source → extraction → chunks + provenance → lexical/semantic retrieval → LLM answer → citations`
+
+## Pilot 0.5 · Planner parity + zero-entry mail ingestion
+
+### To-Dos
+
+La estructura de tareas se aproxima mucho más al nuevo Microsoft Planner. Además de Board y Raster, ahora funcionan Kalender y Diagramme. Board puede agrupar por Bucket, Status, Priorität, Fälligkeit, Zugewiesen an y Bezeichnungen; los filtros cubren Status, Priorität, Bucket, responsable, etiquetas y fecha.
+
+Al abrir una tarea aparece un panel de detalle inspirado en Planner con:
+
+- Status: Nicht begonnen / In Bearbeitung / Wartet / Abgeschlossen;
+- Priorität: Dringend / Wichtig / Mittel / Niedrig;
+- Startdatum y Fälligkeitsdatum;
+- Wiederholen: täglich, Wochentage, wöchentlich, monatlich, jährlich;
+- Bucket;
+- Zuweisung y Bezeichnungen;
+- Checklist;
+- Notizen + In Boardansicht anzeigen;
+- Anlagen (archivo privado o URL);
+- Aufgabenchat;
+- duplicación y archivado.
+
+Las tareas recurrentes siguen el comportamiento básico de Planner: al completar la ocurrencia activa se genera la siguiente y la recurrencia se calcula a partir de la fecha de vencimiento, fecha de inicio o fecha actual.
+
+El quick-add del Board es optimista: la tarjeta aparece inmediatamente y la escritura a Supabase ocurre después. El registro de eventos ya no bloquea el guardado principal.
+
+### Mail: drag & drop
+
+La captura manual de campos deja de ser el flujo principal. La superficie Mail acepta múltiples archivos `.eml` y Outlook `.msg` por drag & drop o selector.
+
+Pipeline:
+
+`drop file → private Storage → authenticated Edge Function → parse headers/body/attachments → minds_mails → minds_sources → minds_chunks → full-text retrieval`
+
+El parsing se realiza en la Edge Function `minds-ingest-mail`, no en librerías ejecutadas desde un CDN dentro del navegador. La función exige JWT válido, reutiliza el contexto del usuario para respetar RLS y conserva el archivo original y sus anexos en `minds-private`.
+
+Se extraen automáticamente remitente, destinatarios, fecha, asunto, cuerpo, Message-ID/thread y adjuntos cuando el formato los contiene. Los correos con el mismo Message-ID se consideran duplicados.
+
+### Base de datos añadida
+
+`minds_entries` incorpora `start_date`, `recurrence`, `labels` y `show_on_card`, y amplía status/priority para el modelo de Planner.
+
+Se añaden:
+
+- `minds_task_comments`;
+- `minds_task_files`.
+
+Ambas tablas tienen RLS y `anon` no tiene permisos.
+
+### Aún pendiente
+
+El importador ya elimina la reintroducción manual de emails, pero MINDS todavía no hace clasificación semántica mediante LLM. La siguiente capa prevista es embeddings + retrieval híbrido + LLM con citas, para que pueda extraer automáticamente asuntos, posibles decisiones, To-Dos y relaciones sin confundir sugerencias de AI con hechos del proyecto.
