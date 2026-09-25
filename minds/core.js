@@ -1,0 +1,123 @@
+/* Shared, dependency-free model. No DOM, network or hub writes. */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.MindsCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const KEY = 'minds_work_bernried_v1';
+  const KINDS = ['task', 'decision', 'lesson', 'procedure', 'question', 'note'];
+  const STATES = ['open', 'waiting', 'done'];
+  const MAX_ENTRIES = 1000;
+  const MAX_BYTES = 2 * 1024 * 1024;
+  function string(value, max, required = false) {
+    if (typeof value !== 'string' || value.length > max || (required && !value.trim())) {
+      throw new Error('Ungültiges oder zu langes Textfeld.');
+    }
+    return value;
+  }
+  function stamp(value) {
+    string(value, 40, true);
+    if (!/^\d{4}-\d\d-\d\dT/.test(value) || !Number.isFinite(Date.parse(value))) {
+      throw new Error('Ungültiger Zeitstempel.');
+    }
+    return value;
+  }
+  function date(value) {
+    if (value === '') return value;
+    string(value, 10, true);
+    if (!/^\d{4}-\d\d-\d\d$/.test(value) || value < '2000-01-01' || value > '2100-12-31' ||
+        !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value) {
+      throw new Error('Ungültiges Datum.');
+    }
+    return value;
+  }
+  function source(value) {
+    if (!value || typeof value !== 'object') throw new Error('Ungültige Quelle.');
+    const url = new URL(string(value.url, 2048, true));
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+      throw new Error('Quellen müssen HTTP- oder HTTPS-Links ohne Zugangsdaten verwenden.');
+    }
+    return {
+      id:string(value.id, 300, true), title:string(value.title, 300, true), url:url.href,
+      kind:string(value.kind, 40, true), meta:string(value.meta || '', 1000),
+      version:string(value.version || '', 160), capturedAt:stamp(value.capturedAt),
+      mode:string(value.mode, 40, true)
+    };
+  }
+  function entry(value) {
+    if (!value || typeof value !== 'object' || !KINDS.includes(value.kind) ||
+        !STATES.includes(value.state) || typeof value.archived !== 'boolean') {
+      throw new Error('Ungültiger Eintrag.');
+    }
+    return {
+      id:string(value.id, 100, true), kind:value.kind, state:value.state,
+      title:string(value.title, 180, true), body:string(value.body, 12000),
+      alternatives:string(value.alternatives || '', 4000), outcome:string(value.outcome || '', 4000),
+      owner:string(value.owner, 160), due:date(value.due), reference:string(value.reference, 500),
+      source:value.source === null ? null : source(value.source),
+      createdAt:stamp(value.createdAt), updatedAt:stamp(value.updatedAt), archived:value.archived
+    };
+  }
+  function envelope(entries) {
+    return {schemaVersion:1, project:'bernried', entries};
+  }
+  function parse(raw) {
+    if (new TextEncoder().encode(raw).length > MAX_BYTES) throw new Error('Maximale Dateigröße: 2 MB.');
+    const data = JSON.parse(raw);
+    if (!data || data.schemaVersion !== 1 || data.project !== 'bernried' ||
+        !Array.isArray(data.entries) || data.entries.length > MAX_ENTRIES) {
+      throw new Error('Keine gültige MINDS//WORK-Datei für Bernried (Version 1, maximal 1000 Einträge).');
+    }
+    const entries = data.entries.map(entry);
+    if (new Set(entries.map(item => item.id)).size !== entries.length) {
+      throw new Error('Doppelte Eintrags-IDs in der Datei.');
+    }
+    return entries;
+  }
+  function merge(existing, incoming) {
+    const ids = new Set(existing.map(item => item.id));
+    const added = incoming.filter(item => !ids.has(item.id));
+    if (existing.length + added.length > MAX_ENTRIES) throw new Error('Maximal 1000 Einträge im Pilot.');
+    return {entries:[...existing, ...added], added:added.length, skipped:incoming.length - added.length};
+  }
+  function normalize(value) {
+    return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('de').trim();
+  }
+  function matches(item, query) {
+    const text = normalize([item.title, item.body, item.owner, item.reference, item.alternatives,
+      item.outcome, item.source?.title || '', item.source?.meta || ''].join(' '));
+    return normalize(query).split(/\s+/).filter(Boolean).every(word => text.includes(word));
+  }
+  function todayLocal(now = new Date()) {
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+  function attention(item, today) {
+    if (item.archived || item.state === 'done') return false;
+    const end = new Date(`${today}T12:00:00`);
+    end.setDate(end.getDate() + 7);
+    return item.due ? item.due <= todayLocal(end) : ['task', 'decision', 'question'].includes(item.kind);
+  }
+  function select(entries, {screen = 'memory', query = '', archived = false, today = todayLocal()} = {}) {
+    return entries.filter(item => item.archived === archived && matches(item, query) &&
+      (screen === 'today' ? attention(item, today) :
+        ['decision', 'question'].includes(screen) ? item.kind === screen : true))
+      .sort((a, b) => screen === 'today'
+        ? (a.due || '9999').localeCompare(b.due || '9999') || b.updatedAt.localeCompare(a.updatedAt)
+        : b.updatedAt.localeCompare(a.updatedAt));
+  }
+  function save(storage, expectedRaw, entries) {
+    if (storage.getItem(KEY) !== expectedRaw) {
+      throw new Error('Daten wurden in einem anderen Fenster geändert. Entwurf kopieren und Seite neu laden.');
+    }
+    const raw = JSON.stringify(envelope(entries));
+    if (new TextEncoder().encode(raw).length > MAX_BYTES - 1024) {
+      throw new Error('Lokaler Pilot-Speicher ist voll (2 MB). Bitte zuerst exportieren.');
+    }
+    parse(raw); // Validate before writing; storage errors leave existing data intact.
+    storage.setItem(KEY, raw);
+    return raw;
+  }
+  return {KEY, KINDS, STATES, source, entry, envelope, parse, merge, normalize, matches,
+    todayLocal, attention, select, save};
+});

@@ -1,0 +1,97 @@
+{
+  "project": "bernried",
+  "projectName": "Bernried · Museum der Komischen Kunst",
+  "note": "Repository-Katalog vom 24.09.2026 (Commit cd3c391). Links zeigen auf veröffentlichte Dateien, deren Inhalt sich ändern kann. Keine bestätigten Dokumentversionen und kein Live-Projektstatus.",
+  "sources": [
+    {
+      "id": "assets/pdfs/EG.pdf",
+      "title": "EG · Erdgeschoss",
+      "url": "https://tbarchitekten.github.io/Bernried/assets/pdfs/EG.pdf",
+      "kind": "document",
+      "meta": "Grundriss EG · M 1:100 · ARBEITSSTAND · 05.08.2026",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    },
+    {
+      "id": "assets/pdfs/1OG.pdf",
+      "title": "1OG · Obergeschoss",
+      "url": "https://tbarchitekten.github.io/Bernried/assets/pdfs/1OG.pdf",
+      "kind": "document",
+      "meta": "Grundriss OG · M 1:100 · ARBEITSSTAND · 05.05.2026",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    },
+    {
+      "id": "assets/pdfs/Schnitt_C-D.pdf",
+      "title": "Schnitt C / D",
+      "url": "https://tbarchitekten.github.io/Bernried/assets/pdfs/Schnitt_C-D.pdf",
+      "kind": "document",
+      "meta": "Schnitt C / D · M 1:100 · ARBEITSSTAND · 24.04.2024",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    },
+    {
+      "id": "assets/pdfs/Ansicht_SO-Schnitt_F.pdf",
+      "title": "Ansicht SO / Schnitt F",
+      "url": "https://tbarchitekten.github.io/Bernried/assets/pdfs/Ansicht_SO-Schnitt_F.pdf",
+      "kind": "document",
+      "meta": "Ansicht SO / Schnitt F · M 1:100 · ARBEITSSTAND · 05.08.2024",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    },
+    {
+      "id": "assets/pdfs/Ansicht_SW-Schnitt_B.pdf",
+      "title": "Ansicht SW / Schnitt B",
+      "url": "https://tbarchitekten.github.io/Bernried/assets/pdfs/Ansicht_SW-Schnitt_B.pdf",
+      "kind": "document",
+      "meta": "Ansicht SW / Schnitt B · M 1:100 · ARBEITSSTAND · 24.04.2024",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    },
+    {
+      "id": "assets/pdfs/Ansicht_NW-Schnitt_I.pdf",
+      "title": "Ansicht NW / Schnitt I",
+      "url": "https://tbarchitekten.github.io/Bernried/assets/pdfs/Ansicht_NW-Schnitt_I.pdf",
+      "kind": "document",
+      "meta": "Ansicht NW / Schnitt I · M 1:100 · ARBEITSSTAND · 06.08.2026",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    },
+    {
+      "id": "assets/pdfs/Ansicht_NO-Schnitt_E.pdf",
+      "title": "Ansicht NO / Schnitt E",
+      "url": "https://tbarchitekten.github.io/Bernried/assets/pdfs/Ansicht_NO-Schnitt_E.pdf",
+      "kind": "document",
+      "meta": "Ansicht NO / Schnitt E · M 1:100 · ARBEITSSTAND · 24.04.2024",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    },
+    {
+      "id": "schedule",
+      "title": "Planungsterminplan LPH 3",
+      "url": "https://tbarchitekten.github.io/Bernried/terminplan.html",
+      "kind": "schedule",
+      "meta": "Verweis auf den veröffentlichten Plan. Aufgabenstatus nicht ausgelesen.",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    },
+    {
+      "id": "model",
+      "title": "3D Modell",
+      "url": "https://share.d5render.com/user-hub/showreel/shortLink/HHePZ3",
+      "kind": "model",
+      "meta": "Externer D5-Verweis aus index.html.",
+      "version": "cd3c39170a4d7d480860176404b6e80918a74467",
+      "capturedAt": "2026-09-24T00:00:00.000Z",
+      "mode": "repository-baseline"
+    }
+  ]
+}

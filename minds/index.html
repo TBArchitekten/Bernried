@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Bernried · MINDS//WORK</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="core.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="workspace">
+    <header class="masthead">
+      <div><p class="eyebrow">2401 BERNRIED <span> / </span> WORKING MEMORY</p><h1>MINDS<span>//</span>WORK</h1></div>
+      <div class="pilot-label"><span class="dot"></span> Prototyp 0.1 · lokal</div>
+    </header>
+    <div class="notice"><strong>Dein Arbeitsgedächtnis in diesem Browser.</strong> Einträge werden hier gespeichert, nicht an einen Server gesendet. Keine Anmeldung, keine Synchronisierung, kein geschützter Team-Speicher. Für den Pilot nur unkritische Inhalte verwenden und regelmäßig exportieren.</div>
+    <nav class="sections" aria-label="MINDS-Bereiche">
+      <button data-screen="today" aria-pressed="true">Today <span id="open-count">0</span></button>
+      <button data-screen="memory" aria-pressed="false">Memory</button>
+      <button data-screen="decision" aria-pressed="false">Decisions</button>
+      <button data-screen="question" aria-pressed="false">Questions</button>
+      <button data-screen="sources" aria-pressed="false">Sources</button>
+    </nav>
+    <div class="toolbar">
+      <label class="search-label">Gedächtnis durchsuchen<input id="search" type="search" placeholder="Begriff, Verantwortliche oder Quelle …" maxlength="200"></label>
+      <button class="primary" id="new-entry">+ Erinnerung erfassen</button>
+    </div>
+    <div class="layout">
+      <section class="feed" aria-labelledby="screen-title">
+        <div class="feed-heading"><div><h2 id="screen-title">Was braucht deine Aufmerksamkeit?</h2><p id="screen-description">Offene Punkte und Wiedervorlagen bis in sieben Tagen.</p></div><label id="archive-label"><input id="show-archived" type="checkbox"> Archiv zeigen</label></div>
+        <p id="result-summary" class="muted" aria-live="polite"></p>
+        <div id="entries"></div>
+        <section id="source-panel" hidden><p id="source-note"></p><button id="refresh-sources">Quellen aktualisieren</button><div id="sources"></div></section>
+      </section>
+      <aside>
+        <section class="side-card"><p class="eyebrow">PROJEKTKONTEXT</p><h2 id="project-name">Bernried</h2><p>Dokumente bleiben im Project Hub. Erinnerungen halten fest, was sie für deine Arbeit bedeuten.</p><a href="../index.html" target="_top">Zum Project Hub ↗</a></section>
+        <section class="side-card"><p class="eyebrow">ASK MINDS · AUSBLICK</p><h3>My project memory</h3><p>Heute: Textsuche in deinen Einträgen. Später: belegte Antworten mit Quellen.</p><h3>Beyond my memory</h3><p>Externe Recherche bleibt getrennt. In diesem Prototyp ist noch keine KI verbunden.</p></section>
+        <section class="side-card"><p class="eyebrow">DEINE DATEN</p><div class="backup-actions"><button id="export">JSON exportieren</button><label class="file-button">JSON importieren<input id="import" type="file" accept="application/json,.json"></label></div><p class="small">Import ergänzt neue Einträge. Vorhandene IDs werden nicht überschrieben. Exportdateien enthalten deine Notizen im Klartext.</p></section>
+      </aside>
+    </div>
+    <p id="feedback" role="status" aria-live="polite"></p>
+  </main>
+  <dialog id="editor" aria-labelledby="editor-title">
+    <form id="entry-form">
+      <div class="dialog-heading"><h2 id="editor-title">Erinnerung erfassen</h2><button type="button" id="close-editor" aria-label="Schließen">×</button></div>
+      <div class="form-row"><label>Typ<select id="entry-kind"><option value="task">Offener Punkt</option><option value="decision">Entscheidung</option><option value="lesson">Erfahrung / Fehler</option><option value="procedure">Vorgehensweise</option><option value="question">Frage an KI</option><option value="note">Notiz</option></select></label><label>Status<select id="entry-state"><option value="open">Offen</option><option value="waiting">Wartet auf Rückmeldung</option><option value="done">Abgeschlossen</option></select></label></div>
+      <label>Titel<input id="entry-title" required maxlength="180" placeholder="Was soll das Projekt sich merken?"></label>
+      <label>Kontext / Begründung<textarea id="entry-body" rows="4" maxlength="12000" placeholder="Was ist passiert? Warum ist es wichtig? Welche Information fehlt?"></textarea></label>
+      <div id="decision-fields" hidden><label>Alternativen<textarea id="entry-alternatives" rows="2" maxlength="4000"></textarea></label><label>Auswirkungen / nächster Schritt<textarea id="entry-outcome" rows="2" maxlength="4000"></textarea></label></div>
+      <div class="form-row"><label>Verantwortlich / beteiligt<input id="entry-owner" maxlength="160"></label><label>Wiedervorlage / Termin<input id="entry-due" type="date" min="2000-01-01" max="2100-12-31"></label></div>
+      <label>Quelle aus dem Projekt<select id="entry-source"><option value="">Eigene Notiz · ohne Dokumentbeleg</option></select></label>
+      <label>Fundstelle / Gespräch / Datum<input id="entry-reference" maxlength="500" placeholder="z. B. Seite 2, Achse B–C oder Besprechung vom …"></label>
+      <p class="small">Eine Quelle verknüpft den Eintrag mit einem Dokument. Ihr Inhalt wird nicht automatisch gelesen oder bestätigt.</p>
+      <p id="form-error" role="alert"></p>
+      <div class="dialog-actions"><button type="button" id="cancel-editor">Abbrechen</button><button class="primary" type="submit">Lokal speichern</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
