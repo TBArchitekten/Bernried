@@ -46,6 +46,8 @@
       id:r.id, kind:r.kind, state:r.state, title:r.title, body:r.body || '',
       alternatives:r.alternatives || '', outcome:r.outcome || '', owner:r.owner || '',
       due:r.due || '', reference:r.reference || '', source:r.source || null,
+      bucketId:r.bucket_id || '', sortOrder:r.sort_order || 0, priority:r.priority || 'normal',
+      checklist:Array.isArray(r.checklist) ? r.checklist : [],
       createdAt:r.created_at, updatedAt:r.updated_at, archived:Boolean(r.archived), version:r.version || 1
     };
   }
@@ -56,6 +58,8 @@
       body:e.body || '', alternatives:e.alternatives || '', outcome:e.outcome || '',
       owner:e.owner || '', due:e.due || null, reference:e.reference || '',
       source:e.source || null, archived:Boolean(e.archived),
+      bucket_id:e.bucketId || null, sort_order:Number.isInteger(e.sortOrder) ? e.sortOrder : 0,
+      priority:e.priority || 'normal', checklist:Array.isArray(e.checklist) ? e.checklist : [],
       created_at:e.createdAt || new Date().toISOString(),
       updated_at:new Date().toISOString()
     };
@@ -90,6 +94,43 @@
     return fail(r, 'Mail konnte nicht geladen werden').map(mailFromRow);
   }
 
+  function bucketFromRow(r) {
+    return {
+      id:r.id, name:r.name, sortOrder:r.sort_order || 0, archived:Boolean(r.archived),
+      createdAt:r.created_at, updatedAt:r.updated_at
+    };
+  }
+
+  async function loadBuckets() {
+    const r = await client.from('minds_buckets').select('*').eq('project_id', project.id).eq('archived', false)
+      .order('sort_order', {ascending:true}).order('created_at', {ascending:true});
+    return fail(r, 'Buckets konnten nicht geladen werden').map(bucketFromRow);
+  }
+
+  async function saveBucket(bucket) {
+    const row = {
+      id:id(bucket.id), project_id:project.id, name:String(bucket.name || '').trim(),
+      sort_order:Number.isInteger(bucket.sortOrder) ? bucket.sortOrder : 0,
+      archived:Boolean(bucket.archived), updated_at:new Date().toISOString()
+    };
+    if (!row.name) throw new Error('Bucket braucht einen Namen.');
+    const r = await client.from('minds_buckets').upsert(row).select('*').single();
+    const saved = bucketFromRow(fail(r, 'Bucket konnte nicht gespeichert werden'));
+    await event('entry', saved.id, bucket.id ? 'bucket_updated' : 'bucket_created', {name:saved.name});
+    return saved;
+  }
+
+  async function archiveBucket(bucketId) {
+    const tasks = await client.from('minds_entries').select('id').eq('project_id', project.id)
+      .eq('kind','task').eq('bucket_id', bucketId).eq('archived', false).limit(1);
+    if (tasks.error) throw new Error('Bucket konnte nicht geprüft werden: ' + tasks.error.message);
+    if (tasks.data?.length) throw new Error('Bucket enthält noch Aufgaben. Verschiebe sie zuerst.');
+    const r = await client.from('minds_buckets').update({archived:true,updated_at:new Date().toISOString()})
+      .eq('project_id',project.id).eq('id',bucketId);
+    if (r.error) throw new Error('Bucket konnte nicht archiviert werden: ' + r.error.message);
+    await event('entry', bucketId, 'bucket_archived', {});
+  }
+
   async function saveEntry(entry) {
     const existed = Boolean(entry?.id && uuid(entry.id));
     const row = entryToRow(entry);
@@ -105,6 +146,7 @@
     const r = await client.from('minds_mails').upsert(row).select('*').single();
     const saved = mailFromRow(fail(r, 'E-Mail konnte nicht gespeichert werden'));
     await event('mail', saved.id, existed ? 'updated' : 'created', {subject:saved.subject});
+    await indexMailText(saved);
     return saved;
   }
 
@@ -195,6 +237,78 @@
     return {entries:entryCount,mails:mailCount};
   }
 
+  async function sha256Text(text) {
+    const data = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2,'0')).join('');
+  }
+
+  function chunkText(text, max = 1600) {
+    const clean = String(text || '').replace(/\r\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+    if (!clean) return [];
+    const parts = clean.split(/\n\n+/).map(x => x.trim()).filter(Boolean);
+    const chunks = [];
+    let current = '';
+    for (const part of parts) {
+      if ((current + '\n\n' + part).length <= max) {
+        current = current ? current + '\n\n' + part : part;
+      } else {
+        if (current) chunks.push(current);
+        if (part.length <= max) current = part;
+        else {
+          for (let i=0;i<part.length;i+=max) chunks.push(part.slice(i,i+max));
+          current = '';
+        }
+      }
+    }
+    if (current) chunks.push(current);
+    return chunks;
+  }
+
+  async function indexMailText(mail) {
+    const body = String(mail.body || '').trim();
+    if (!body) return null;
+    const checksum = await sha256Text(body);
+    const sourceRow = {
+      project_id:project.id, created_by:user.id, source_type:'email',
+      origin_type:'mail', origin_id:mail.id, title:mail.subject,
+      mime_type:'text/plain', checksum, status:'ready',
+      metadata:{sender:mail.sender || '', recipients:mail.recipients || '', date:mail.date || ''},
+      captured_at:new Date().toISOString(), updated_at:new Date().toISOString()
+    };
+    const sr = await client.from('minds_sources').upsert(sourceRow,{onConflict:'project_id,origin_type,origin_id'}).select('*').single();
+    const source = fail(sr, 'E-Mail konnte nicht indexiert werden');
+    const del = await client.from('minds_chunks').delete().eq('project_id',project.id).eq('source_id',source.id);
+    if (del.error) throw new Error('Alter E-Mail-Index konnte nicht ersetzt werden: ' + del.error.message);
+    const chunks = chunkText(body).map((content,chunk_index)=>({
+      project_id:project.id, source_id:source.id, chunk_index, content,
+      locator:{kind:'email',mailId:mail.id,subject:mail.subject,sender:mail.sender || '',date:mail.date || ''},
+      content_hash:''
+    }));
+    if (chunks.length) {
+      const ins = await client.from('minds_chunks').insert(chunks);
+      if (ins.error) throw new Error('E-Mail-Chunks konnten nicht gespeichert werden: ' + ins.error.message);
+    }
+    await event('source', source.id, 'indexed', {sourceType:'email',chunks:chunks.length});
+    return source;
+  }
+
+  async function searchChunks(query, limit=8) {
+    const q = String(query || '').trim();
+    if (!q) return [];
+    const r = await client.from('minds_chunks')
+      .select('id,content,locator,chunk_index,source_id,minds_sources!inner(title,source_type,origin_type,origin_id,captured_at)')
+      .eq('project_id',project.id)
+      .textSearch('content', q, {config:'simple', type:'plain'})
+      .limit(limit);
+    const data = fail(r, 'Projektindex konnte nicht durchsucht werden');
+    return data.map(row => ({
+      id:row.id, content:row.content, locator:row.locator || {}, chunkIndex:row.chunk_index,
+      sourceId:row.source_id, sourceTitle:row.minds_sources?.title || 'Quelle',
+      sourceType:row.minds_sources?.source_type || 'other', capturedAt:row.minds_sources?.captured_at || ''
+    }));
+  }
+
   async function uploadMailFile(mailId, file) {
     if (!mailId || !file) throw new Error('Mail und Datei erforderlich.');
     const safe = file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180);
@@ -213,8 +327,8 @@
   }
 
   window.MindsStore = {
-    client, init, loadEntries, loadMails, saveEntry, saveMail,
-    loadMessages, appendMessage, newConversation, migrateLocal, uploadMailFile,
+    client, init, loadEntries, loadMails, loadBuckets, saveBucket, archiveBucket, saveEntry, saveMail,
+    loadMessages, appendMessage, newConversation, migrateLocal, uploadMailFile, indexMailText, searchChunks,
     get project(){return project;}, get user(){return user;}
   };
 })();
