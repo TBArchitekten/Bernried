@@ -91,18 +91,20 @@
   }
 
   async function saveEntry(entry) {
+    const existed = Boolean(entry?.id && uuid(entry.id));
     const row = entryToRow(entry);
     const r = await client.from('minds_entries').upsert(row).select('*').single();
     const saved = entryFromRow(fail(r, 'Memory konnte nicht gespeichert werden'));
-    await event('entry', saved.id, entry.id ? 'updated' : 'created', {kind:saved.kind,state:saved.state});
+    await event('entry', saved.id, existed ? 'updated' : 'created', {kind:saved.kind,state:saved.state});
     return saved;
   }
 
   async function saveMail(mail) {
+    const existed = Boolean(mail?.id && uuid(mail.id));
     const row = mailToRow(mail);
     const r = await client.from('minds_mails').upsert(row).select('*').single();
     const saved = mailFromRow(fail(r, 'E-Mail konnte nicht gespeichert werden'));
-    await event('mail', saved.id, mail.id ? 'updated' : 'created', {subject:saved.subject});
+    await event('mail', saved.id, existed ? 'updated' : 'created', {subject:saved.subject});
     return saved;
   }
 
