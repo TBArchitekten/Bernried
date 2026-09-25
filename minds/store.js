@@ -46,7 +46,9 @@
       id:r.id, kind:r.kind, state:r.state, title:r.title, body:r.body || '',
       alternatives:r.alternatives || '', outcome:r.outcome || '', owner:r.owner || '',
       due:r.due || '', reference:r.reference || '', source:r.source || null,
-      bucketId:r.bucket_id || '', sortOrder:r.sort_order || 0, priority:r.priority || 'normal',
+      bucketId:r.bucket_id || '', sortOrder:r.sort_order || 0, priority:r.priority || 'medium',
+      startDate:r.start_date || '', recurrence:r.recurrence || 'none',
+      labels:Array.isArray(r.labels) ? r.labels : [], showOnCard:Boolean(r.show_on_card),
       checklist:Array.isArray(r.checklist) ? r.checklist : [],
       createdAt:r.created_at, updatedAt:r.updated_at, archived:Boolean(r.archived), version:r.version || 1
     };
@@ -59,7 +61,9 @@
       owner:e.owner || '', due:e.due || null, reference:e.reference || '',
       source:e.source || null, archived:Boolean(e.archived),
       bucket_id:e.bucketId || null, sort_order:Number.isInteger(e.sortOrder) ? e.sortOrder : 0,
-      priority:e.priority || 'normal', checklist:Array.isArray(e.checklist) ? e.checklist : [],
+      priority:e.priority || 'medium', checklist:Array.isArray(e.checklist) ? e.checklist : [],
+      start_date:e.startDate || null, recurrence:e.recurrence || 'none',
+      labels:Array.isArray(e.labels) ? e.labels : [], show_on_card:Boolean(e.showOnCard),
       created_at:e.createdAt || new Date().toISOString(),
       updated_at:new Date().toISOString()
     };
@@ -309,6 +313,86 @@
     }));
   }
 
+  async function loadTaskComments(entryId) {
+    const r = await client.from('minds_task_comments').select('*')
+      .eq('project_id', project.id).eq('entry_id', entryId)
+      .order('created_at', {ascending:true});
+    return fail(r, 'Aufgabenchat konnte nicht geladen werden').map(row=>({
+      id:row.id, entryId:row.entry_id, userId:row.user_id, content:row.content, createdAt:row.created_at
+    }));
+  }
+
+  async function addTaskComment(entryId, content) {
+    const text=String(content||'').trim();
+    if(!text) throw new Error('Kommentar ist leer.');
+    const r=await client.from('minds_task_comments').insert({
+      project_id:project.id, entry_id:entryId, user_id:user.id, content:text
+    }).select('*').single();
+    const row=fail(r,'Kommentar konnte nicht gespeichert werden');
+    await event('entry', entryId, 'comment_added', {commentId:row.id});
+    return {id:row.id,entryId:row.entry_id,userId:row.user_id,content:row.content,createdAt:row.created_at};
+  }
+
+  async function loadTaskFiles(entryId) {
+    const r=await client.from('minds_task_files').select('*')
+      .eq('project_id',project.id).eq('entry_id',entryId).order('created_at',{ascending:true});
+    return fail(r,'Aufgabenanhänge konnten nicht geladen werden');
+  }
+
+  async function uploadTaskFile(entryId,file) {
+    if(!entryId||!file) throw new Error('Aufgabe und Datei erforderlich.');
+    const safe=file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180);
+    const path=`${PROJECT_SLUG}/tasks/${entryId}/${crypto.randomUUID()}-${safe}`;
+    const upload=await client.storage.from(PRIVATE_BUCKET).upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
+    if(upload.error) throw new Error('Anhang konnte nicht hochgeladen werden: '+upload.error.message);
+    const r=await client.from('minds_task_files').insert({
+      project_id:project.id,entry_id:entryId,uploaded_by:user.id,storage_path:path,
+      filename:file.name,mime_type:file.type||'',size_bytes:file.size||0,external_url:''
+    }).select('*').single();
+    if(r.error){
+      await client.storage.from(PRIVATE_BUCKET).remove([path]);
+      throw new Error('Anhang konnte nicht registriert werden: '+r.error.message);
+    }
+    await event('entry',entryId,'file_added',{fileId:r.data.id,filename:file.name});
+    return r.data;
+  }
+
+  async function addTaskLink(entryId,url,label='Link') {
+    const parsed=new URL(url);
+    if(!['http:','https:'].includes(parsed.protocol)) throw new Error('Nur HTTP/HTTPS-Links sind erlaubt.');
+    const r=await client.from('minds_task_files').insert({
+      project_id:project.id,entry_id:entryId,uploaded_by:user.id,storage_path:'',
+      filename:String(label||parsed.hostname).slice(0,500),mime_type:'text/uri-list',size_bytes:0,external_url:parsed.href
+    }).select('*').single();
+    const row=fail(r,'Link konnte nicht gespeichert werden');
+    await event('entry',entryId,'link_added',{fileId:row.id,url:parsed.href});
+    return row;
+  }
+
+  async function signedTaskFile(fileRow) {
+    if(fileRow.external_url) return fileRow.external_url;
+    const r=await client.storage.from(PRIVATE_BUCKET).createSignedUrl(fileRow.storage_path,300);
+    if(r.error) throw new Error('Anhang konnte nicht geöffnet werden: '+r.error.message);
+    return r.data.signedUrl;
+  }
+
+  async function uploadRawMailFile(mailId,file) {
+    if(!mailId||!file) throw new Error('Mail und Datei erforderlich.');
+    const safe=file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180);
+    const path=`${PROJECT_SLUG}/mail/${mailId}/raw-${crypto.randomUUID()}-${safe}`;
+    const upload=await client.storage.from(PRIVATE_BUCKET).upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
+    if(upload.error) throw new Error('Originalmail konnte nicht hochgeladen werden: '+upload.error.message);
+    const row=await client.from('minds_mail_files').insert({
+      project_id:project.id,mail_id:mailId,uploaded_by:user.id,storage_path:path,
+      filename:file.name,mime_type:file.type||'application/octet-stream',size_bytes:file.size||0
+    }).select('*').single();
+    if(row.error){
+      await client.storage.from(PRIVATE_BUCKET).remove([path]);
+      throw new Error('Originalmail konnte nicht registriert werden: '+row.error.message);
+    }
+    return row.data;
+  }
+
   async function uploadMailFile(mailId, file) {
     if (!mailId || !file) throw new Error('Mail und Datei erforderlich.');
     const safe = file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180);
@@ -328,7 +412,9 @@
 
   window.MindsStore = {
     client, init, loadEntries, loadMails, loadBuckets, saveBucket, archiveBucket, saveEntry, saveMail,
-    loadMessages, appendMessage, newConversation, migrateLocal, uploadMailFile, indexMailText, searchChunks,
+    loadMessages, appendMessage, newConversation, migrateLocal,
+    loadTaskComments, addTaskComment, loadTaskFiles, uploadTaskFile, addTaskLink, signedTaskFile,
+    uploadRawMailFile, uploadMailFile, indexMailText, searchChunks,
     get project(){return project;}, get user(){return user;}
   };
 })();
