@@ -4,14 +4,17 @@
   const M = window.MindsCore;
   const S = window.MindsStore;
   const $ = id => document.getElementById(id);
-  const labels = {task:'To-Do', decision:'Entscheidung', lesson:'Erfahrung / Fehler',
-    procedure:'Vorgehensweise', question:'AI-Frage', note:'Notiz'};
-  const states = {open:'Offen', waiting:'Wartet', done:'Erledigt'};
-  const priorities = {low:'Niedrig', normal:'Normal', important:'Wichtig', urgent:'Dringend'};
+
+  const labels = {task:'To-Do',decision:'Entscheidung',lesson:'Erfahrung / Fehler',procedure:'Vorgehensweise',question:'AI-Frage',note:'Notiz'};
+  const states = {open:'Nicht begonnen',progress:'In Bearbeitung',waiting:'Wartet',done:'Abgeschlossen'};
+  const priorities = {urgent:'Dringend',important:'Wichtig',medium:'Mittel',low:'Niedrig'};
+  const recurrences = {none:'Wiederholt sich nicht',daily:'Täglich',weekdays:'Wochentage',weekly:'Wöchentlich',monthly:'Monatlich',yearly:'Jährlich'};
+  const labelColors = ['sage','blue','violet','amber','rose','slate'];
 
   let entries=[], mails=[], buckets=[], sources=[], draftSources=[], chat=[];
   let editing=null, originalSource=null, hubContext=false, busy=false;
-  let editingBucket=null, todoView='board';
+  let taskEditing=null, taskChecklistDraft=[], taskComments=[], taskFiles=[];
+  let editingBucket=null, todoView='board', calendarDate=new Date();
 
   function el(tag,text,className){
     const n=document.createElement(tag);
@@ -21,55 +24,41 @@
   }
 
   function feedback(message){
-    $('feedback').textContent=message || '';
-    if(message) setTimeout(()=>{if($('feedback').textContent===message)$('feedback').textContent='';},5000);
+    $('feedback').textContent=message||'';
+    if(message)setTimeout(()=>{if($('feedback').textContent===message)$('feedback').textContent='';},5000);
   }
 
   function dateLabel(value){
-    return value ? new Date(value.length===10 ? value+'T12:00:00' : value).toLocaleDateString('de-DE') : '';
+    return value ? new Date(value.length===10?value+'T12:00:00':value).toLocaleDateString('de-DE') : '';
   }
 
-  function tomorrow(){
-    const d=new Date(); d.setDate(d.getDate()+1); return M.todayLocal(d);
+  function stampLabel(value){
+    return value ? new Date(value).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'}) : '';
   }
 
-  function isOverdue(item){
-    return item.due && item.state!=='done' && item.due < M.todayLocal();
-  }
-
+  function today(){return M.todayLocal();}
+  function tomorrow(){const d=new Date();d.setDate(d.getDate()+1);return M.todayLocal(d);}
+  function isOverdue(item){return item.due&&item.state!=='done'&&item.due<today();}
   function initials(value){
     const parts=String(value||'').trim().split(/\s+/).filter(Boolean);
-    return parts.length ? parts.slice(0,2).map(x=>x[0]?.toUpperCase()||'').join('') : '';
+    return parts.length?parts.slice(0,2).map(x=>x[0]?.toUpperCase()||'').join(''):'';
   }
 
   function link(source){
     const a=el('a',source.title+' ↗');
-    a.href=M.source(source).url;
-    a.target='_blank';
-    a.rel='noopener noreferrer';
+    a.href=M.source(source).url;a.target='_blank';a.rel='noopener noreferrer';
     return a;
   }
 
   function action(text,fn,className=''){
-    const n=el('button',text,className);
-    n.type='button';
-    n.addEventListener('click',fn);
-    n.disabled=busy;
-    return n;
+    const n=el('button',text,className);n.type='button';n.addEventListener('click',fn);n.disabled=busy;return n;
   }
 
-  function setBusy(value){
-    busy=value;
-  }
-
-  function bucketName(id){
-    return buckets.find(x=>x.id===id)?.name || 'Allgemein';
-  }
+  function bucketName(id){return buckets.find(x=>x.id===id)?.name||'Allgemein';}
+  function activeTasks(){return entries.filter(x=>x.kind==='task'&&!x.archived);}
 
   async function refresh(){
-    [entries,mails,buckets,chat]=await Promise.all([
-      S.loadEntries(),S.loadMails(),S.loadBuckets(),S.loadMessages()
-    ]);
+    [entries,mails,buckets,chat]=await Promise.all([S.loadEntries(),S.loadMails(),S.loadBuckets(),S.loadMessages()]);
     if(!buckets.length){
       const saved=await S.saveBucket({name:'Allgemein',sortOrder:0,archived:false});
       buckets=[saved];
@@ -78,117 +67,70 @@
   }
 
   async function saveEntry(value,message='Gespeichert.'){
-    setBusy(true);
     try{
       const saved=await S.saveEntry(value);
       const i=entries.findIndex(x=>x.id===saved.id);
-      if(i>=0) entries[i]=saved; else entries.unshift(saved);
-      renderAll();
-      if(message) feedback(message);
-      return saved;
-    }catch(error){
-      feedback(error.message);
-      throw error;
-    }finally{setBusy(false);}
+      if(i>=0)entries[i]=saved;else entries.unshift(saved);
+      renderAll();if(message)feedback(message);return saved;
+    }catch(error){feedback(error.message);throw error;}
   }
 
   async function saveMail(value,files=[]){
-    setBusy(true);
     try{
       const saved=await S.saveMail(value);
-      for(const file of files) await S.uploadMailFile(saved.id,file);
+      for(const file of files)await S.uploadMailFile(saved.id,file);
       const i=mails.findIndex(x=>x.id===saved.id);
       if(i>=0)mails[i]=saved;else mails.unshift(saved);
-      renderAll();
-      feedback(files.length ? 'E-Mail + '+files.length+' Anhänge privat gespeichert und indexiert.' : 'E-Mail privat gespeichert und indexiert.');
+      renderAll();feedback(files.length?'E-Mail + '+files.length+' Anlagen gespeichert.':'E-Mail gespeichert.');
       return saved;
-    }catch(error){
-      feedback(error.message);
-      throw error;
-    }finally{setBusy(false);}
+    }catch(error){feedback(error.message);throw error;}
   }
 
   async function saveBucket(value){
-    setBusy(true);
-    try{
-      const saved=await S.saveBucket(value);
-      const i=buckets.findIndex(x=>x.id===saved.id);
-      if(i>=0)buckets[i]=saved;else buckets.push(saved);
-      buckets.sort((a,b)=>a.sortOrder-b.sortOrder || a.createdAt.localeCompare(b.createdAt));
-      fillBucketOptions(editing?.bucketId || saved.id);
-      renderTodos();
-      feedback('Bucket gespeichert.');
-      return saved;
-    }catch(error){
-      feedback(error.message);
-      throw error;
-    }finally{setBusy(false);}
+    const saved=await S.saveBucket(value);
+    const i=buckets.findIndex(x=>x.id===saved.id);
+    if(i>=0)buckets[i]=saved;else buckets.push(saved);
+    buckets.sort((a,b)=>a.sortOrder-b.sortOrder||a.createdAt.localeCompare(b.createdAt));
+    renderTodos();return saved;
   }
 
   function setScreen(name){
     document.querySelectorAll('.screen').forEach(node=>{
-      const active=node.id==='screen-'+name;
-      node.hidden=!active;
-      node.classList.toggle('active',active);
+      const active=node.id==='screen-'+name;node.hidden=!active;node.classList.toggle('active',active);
     });
-    document.querySelectorAll('[data-screen]').forEach(button=>{
-      button.setAttribute('aria-pressed',String(button.dataset.screen===name));
-    });
+    document.querySelectorAll('[data-screen]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.screen===name)));
     if(name==='assistant')$('ask-input').focus();
     renderAll();
   }
 
   function metrics(){
-    const tasks=entries.filter(x=>x.kind==='task'&&!x.archived);
-    const open=tasks.filter(x=>x.state==='open').length;
-    const waiting=tasks.filter(x=>x.state==='waiting').length;
-    $('open-count').textContent=open+waiting;
-    $('mail-nav-count').textContent=mails.filter(x=>!x.archived).length;
-    $('metric-open').textContent=open;
-    $('metric-waiting').textContent=waiting;
+    const tasks=activeTasks(),open=tasks.filter(x=>x.state==='open'||x.state==='progress').length,waiting=tasks.filter(x=>x.state==='waiting').length;
+    $('open-count').textContent=open+waiting;$('mail-nav-count').textContent=mails.filter(x=>!x.archived).length;
+    $('metric-open').textContent=open;$('metric-waiting').textContent=waiting;
     $('metric-decisions').textContent=entries.filter(x=>x.kind==='decision'&&!x.archived).length;
     $('metric-mail').textContent=mails.filter(x=>!x.archived).length;
   }
 
   function renderChat(){
-    const host=$('chat-feed');
-    host.replaceChildren();
+    const host=$('chat-feed');host.replaceChildren();
     if(!chat.length){
       const intro=el('div',undefined,'message assistant');
-      intro.append(
-        el('p','MINDS','message-label'),
-        el('div','Ich bin mit deiner privaten Bernried-Memory verbunden. E-Mails werden bereits als durchsuchbare Quellen indexiert; externe Normenrecherche und ein LLM sind noch getrennt.','message-text')
-      );
-      host.append(intro);
-      return;
+      intro.append(el('p','MINDS','message-label'),el('div','Ich bin mit deiner privaten Bernried-Memory verbunden. E-Mails werden als Quellen indexiert; externe Normenrecherche und ein LLM folgen als getrennte Schicht.','message-text'));
+      host.append(intro);return;
     }
-
     chat.forEach(item=>{
       const box=el('div',undefined,'message '+item.role);
-      box.append(
-        el('p',item.role==='user'?'DU':'MINDS','message-label'),
-        el('div',item.text,'message-text')
-      );
+      box.append(el('p',item.role==='user'?'DU':'MINDS','message-label'),el('div',item.text,'message-text'));
       const extras=item.extras||{};
       if(extras.todo){
-        const p=extras.todo;
-        const card=el('div',undefined,'proposal');
+        const p=extras.todo,card=el('div',undefined,'proposal');
         card.append(el('strong','Vorgeschlagenes To-Do'),el('div',p.title));
         if(p.due)card.append(el('small','Termin: '+dateLabel(p.due)));
-        if(p.bucketName)card.append(el('small','Bucket: '+p.bucketName));
+        card.append(el('small','Bucket: '+(p.bucketName||'Allgemein')));
         card.append(action('Als To-Do speichern',async()=>{
-          const now=new Date().toISOString();
-          const bucket=buckets.find(x=>x.id===p.bucketId)||buckets[0];
-          await saveEntry(M.entry({
-            id:crypto.randomUUID(),kind:'task',state:'open',title:p.title,
-            body:'Über MINDS vorgeschlagen.',alternatives:'',outcome:'',owner:'',
-            due:p.due||'',reference:'MINDS conversation',source:null,
-            bucketId:bucket?.id||'',sortOrder:0,priority:'normal',checklist:[],
-            createdAt:now,updatedAt:now,archived:false
-          }),'To-Do privat gespeichert.');
-          const msg=await S.appendMessage('assistant','Gespeichert. Das To-Do liegt im Bucket „'+(bucket?.name||'Allgemein')+'“.',{});
-          chat.push(msg);
-          renderChat();
+          await createTaskFast(p.title,p.bucketId||buckets[0]?.id||'',{due:p.due||''});
+          const msg=await S.appendMessage('assistant','Gespeichert. Das To-Do liegt im Bucket „'+(p.bucketName||'Allgemein')+'“.',{});
+          chat.push(msg);renderChat();
         },'small-primary'));
         box.append(card);
       }
@@ -198,68 +140,40 @@
   }
 
   function intentWords(prompt){
-    const ignore=new Set(['email','mail','e-mail','herr','frau','tema','thema','steht','stand','sagte','schrieb','geschrieben',
-      'ayudame','ayúdame','antwort','antworten','responder','sobre','decía','decia','dazu','darin','diesem','dieser','projekt',
-      'minds','bitte','kannst','puedes','quiero','saber','what','said','about','please']);
+    const ignore=new Set(['email','mail','e-mail','herr','frau','tema','thema','steht','stand','sagte','schrieb','geschrieben','ayudame','ayúdame','antwort','antworten','responder','sobre','decía','decia','dazu','darin','diesem','dieser','projekt','minds','bitte','kannst','puedes','quiero','saber','what','said','about','please']);
     return M.words(prompt).filter(word=>!ignore.has(word)).join(' ');
   }
 
   function isTodoIntent(text){
     const n=M.normalize(text);
-    return /(to-?do|aufgabe|erinnere mich|füge|erstelle|anlegen|agrega|añade|crea|recu[eé]rdame)/.test(n) &&
-      !/(was|welche|zeige|dime|cuales|cu[aá]les)/.test(n.slice(0,25));
+    return /(to-?do|aufgabe|erinnere mich|füge|erstelle|anlegen|agrega|añade|crea|recu[eé]rdame)/.test(n)&&!/(was|welche|zeige|dime|cuales|cu[aá]les)/.test(n.slice(0,25));
   }
 
   function todoProposal(prompt){
     let title=prompt.replace(/^(bitte\s+)?(füge|erstelle|lege|agrega|añade|crea|recu[eé]rdame)(\s+mir)?(\s+(ein|eine|un))?(\s+to-?do|\s+aufgabe)?\s*(für|para)?\s*/i,'').trim();
     title=title.replace(/\b(morgen|mañana)\b/gi,'').replace(/\s{2,}/g,' ').trim();
-    const named=buckets.find(bucket=>M.normalize(prompt).includes(M.normalize(bucket.name)));
-    const bucket=named||buckets[0];
-    return {
-      title:title||prompt.trim(),
-      due:/\b(morgen|mañana)\b/i.test(prompt)?tomorrow():'',
-      bucketId:bucket?.id||'',
-      bucketName:bucket?.name||'Allgemein'
-    };
+    const named=buckets.find(bucket=>M.normalize(prompt).includes(M.normalize(bucket.name))),bucket=named||buckets[0];
+    return {title:title||prompt.trim(),due:/\b(morgen|mañana)\b/i.test(prompt)?tomorrow():'',bucketId:bucket?.id||'',bucketName:bucket?.name||'Allgemein'};
   }
 
-  function entryText(item){
-    return [labels[item.kind],item.title,item.body,item.owner,item.reference,item.outcome].filter(Boolean).join(' · ');
-  }
-
-  function mailText(item){
-    return ['E-Mail',item.subject,item.sender,item.date?dateLabel(item.date):'',item.body.slice(0,600)].filter(Boolean).join(' · ');
-  }
+  function entryText(item){return [labels[item.kind],item.title,item.body,item.owner,item.reference,item.outcome].filter(Boolean).join(' · ');}
+  function mailText(item){return ['E-Mail',item.subject,item.sender,item.date?dateLabel(item.date):'',item.body.slice(0,600)].filter(Boolean).join(' · ');}
 
   async function answer(prompt){
     const n=M.normalize(prompt);
-
-    if(isTodoIntent(prompt)){
-      return {text:'Ich kann das als To-Do festhalten. Bitte bestätige den Vorschlag.',extras:{todo:todoProposal(prompt)}};
-    }
-
+    if(isTodoIntent(prompt))return {text:'Ich kann das als To-Do festhalten. Bitte bestätige den Vorschlag.',extras:{todo:todoProposal(prompt)}};
     if(/(was ist.*offen|welche.*offen|pendient|to-?dos? offen|offene punkte)/.test(n)){
-      const list=entries.filter(x=>x.kind==='task'&&!x.archived&&x.state!=='done')
-        .sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
-      return {text:list.length
-        ? 'Aktuell sind '+list.length+' To-Dos offen oder wartend:\n'+list.slice(0,8).map(x=>'• ['+bucketName(x.bucketId)+'] '+entryText(x)).join('\n')
-        : 'Im Projektgedächtnis ist aktuell kein offenes To-Do erfasst.'};
+      const list=activeTasks().filter(x=>x.state!=='done').sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999'));
+      return {text:list.length?'Aktuell sind '+list.length+' To-Dos aktiv:\n'+list.slice(0,10).map(x=>'• ['+bucketName(x.bucketId)+'] '+entryText(x)).join('\n'):'Aktuell ist kein offenes To-Do erfasst.'};
     }
-
     if(/(warte|wartet|waiting|esperando|rückmeldung)/.test(n)){
-      const list=entries.filter(x=>x.kind==='task'&&!x.archived&&x.state==='waiting');
-      return {text:list.length
-        ? 'Du wartest bei '+list.length+' Punkten auf Rückmeldung:\n'+list.slice(0,8).map(x=>'• ['+bucketName(x.bucketId)+'] '+entryText(x)).join('\n')
-        : 'Ich finde derzeit kein To-Do mit Status „Wartet“. '};
+      const list=activeTasks().filter(x=>x.state==='waiting');
+      return {text:list.length?'Du wartest bei '+list.length+' Punkten auf Rückmeldung:\n'+list.slice(0,10).map(x=>'• ['+bucketName(x.bucketId)+'] '+entryText(x)).join('\n'):'Kein To-Do steht derzeit auf „Wartet“. '};
     }
-
     if(/(entscheidung|entscheidungen|decisi[oó]n|decisiones)/.test(n)){
       const list=entries.filter(x=>x.kind==='decision'&&!x.archived).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
-      return {text:list.length
-        ? 'Letzte Entscheidungen:\n'+list.slice(0,6).map(x=>'• '+entryText(x)).join('\n')
-        : 'Bisher ist keine Entscheidung erfasst.'};
+      return {text:list.length?'Letzte Entscheidungen:\n'+list.slice(0,8).map(x=>'• '+entryText(x)).join('\n'):'Bisher ist keine Entscheidung erfasst.'};
     }
-
     if(/(fragen.*wieder|question.*signal|preguntas.*repet|fragensignal)/.test(n)){
       const s=M.questionSignals(entries),parts=[];
       if(s.repeated.length)parts.push('Wiederholt: '+s.repeated.map(x=>x.label+' ('+x.count+'×)').join(' · '));
@@ -267,650 +181,533 @@
       return {text:parts.length?parts.join('\n'):'Noch gibt es zu wenig wiederholte Fragen.'};
     }
 
-    const query=intentWords(prompt)||prompt;
-    const hits=M.searchProject(entries,mails,query);
+    const query=intentWords(prompt)||prompt,hits=M.searchProject(entries,mails,query);
     const wantsMail=/(mail|email|e-mail|correo|schrieb|geschrieben|dec[ií]a)/.test(n);
     const wantsReply=/(antwort|antworten|reply|responder|contestar)/.test(n);
-
     if(wantsMail&&hits.mails.length){
-      const context=hits.mails.slice(0,4).map(x=>'• '+mailText(x)).join('\n');
-      return {text:(wantsReply
-        ? 'Ich habe passenden Mail-Kontext gefunden. Die LLM-Antwortfunktion ist noch nicht angeschlossen; der sichere Quellenkontext ist aber vorhanden.'
-        : 'Passende private E-Mails:')+'\n'+context};
+      const context=hits.mails.slice(0,5).map(x=>'• '+mailText(x)).join('\n');
+      return {text:(wantsReply?'Ich habe passenden Mail-Kontext gefunden. Die eigentliche LLM-Antwortfunktion ist noch nicht angeschlossen.':'Passende private E-Mails:')+'\n'+context};
     }
-
-    const combined=[
-      ...hits.entries.slice(0,5).map(x=>'• '+entryText(x)),
-      ...hits.mails.slice(0,3).map(x=>'• '+mailText(x))
-    ];
-    if(combined.length){
-      return {text:'Ich finde dazu folgenden Kontext in deiner privaten Projektmemory:\n'+combined.join('\n')};
-    }
+    const combined=[...hits.entries.slice(0,6).map(x=>'• '+entryText(x)),...hits.mails.slice(0,4).map(x=>'• '+mailText(x))];
+    if(combined.length)return {text:'Ich finde dazu folgenden Kontext in deiner Projektmemory:\n'+combined.join('\n')};
 
     try{
-      const chunkHits=await S.searchChunks(query,6);
+      const chunkHits=await S.searchChunks(query,8);
       if(chunkHits.length){
         return {text:'Im Quellenindex finde ich dazu:\n'+chunkHits.map(hit=>{
-          const loc=hit.locator||{};
-          const where=[hit.sourceTitle,loc.sender,loc.date?dateLabel(loc.date):''].filter(Boolean).join(' · ');
-          return '• ['+where+'] '+hit.content.slice(0,420)+(hit.content.length>420?'…':'');
+          const loc=hit.locator||{},where=[hit.sourceTitle,loc.sender,loc.date?dateLabel(loc.date):''].filter(Boolean).join(' · ');
+          return '• ['+where+'] '+hit.content.slice(0,520)+(hit.content.length>520?'…':'');
         }).join('\n')};
       }
-    }catch(error){
-      console.warn('Chunk search failed',error);
-    }
+    }catch(error){console.warn('Chunk search failed',error);}
 
-    if(/(din|norm|baybo|regel|anforder|treppe|stair)/.test(n)){
-      return {text:'Dazu finde ich noch keine belastbare interne Quelle. „Beyond my memory“ und verifizierte Normenrecherche sind bewusst noch nicht angeschlossen.'};
-    }
+    if(/(din|norm|baybo|regel|anforder|treppe|stair)/.test(n))return {text:'Dazu finde ich noch keine belastbare interne Quelle. „Beyond my memory“ und verifizierte Normenrecherche sind bewusst noch nicht angeschlossen.'};
     return {text:'Dazu finde ich in deiner Projektmemory noch keinen belastbaren Kontext.'};
   }
 
   async function ask(prompt,storeSignal=true){
     if(!prompt.trim())return;
-    const userMsg=await S.appendMessage('user',prompt.trim(),{mode:'memory'});
-    chat.push(userMsg);
-    renderChat();
-
+    const userMsg=await S.appendMessage('user',prompt.trim(),{mode:'memory'});chat.push(userMsg);renderChat();
     if(storeSignal){
       const now=new Date().toISOString();
-      await saveEntry(M.entry({
-        id:crypto.randomUUID(),kind:'question',state:'open',
-        title:prompt.trim().slice(0,180),body:'Frage an MINDS//WORK',
-        alternatives:'',outcome:'',owner:'',due:'',reference:'Assistant',source:null,
-        bucketId:'',sortOrder:0,priority:'normal',checklist:[],
-        createdAt:now,updatedAt:now,archived:false
-      }),'');
+      await saveEntry(M.entry({id:crypto.randomUUID(),kind:'question',state:'open',title:prompt.trim().slice(0,180),body:'Frage an MINDS//WORK',alternatives:'',outcome:'',owner:'',due:'',reference:'Assistant',source:null,bucketId:'',sortOrder:0,priority:'medium',startDate:'',recurrence:'none',labels:[],showOnCard:false,checklist:[],createdAt:now,updatedAt:now,archived:false}),'');
     }
-
-    const result=await answer(prompt.trim());
-    const assistantMsg=await S.appendMessage('assistant',result.text,result.extras||{});
-    chat.push(assistantMsg);
-    renderAll();
+    const result=await answer(prompt.trim()),assistantMsg=await S.appendMessage('assistant',result.text,result.extras||{});
+    chat.push(assistantMsg);renderAll();
   }
 
   function renderAssistantSide(){
-    const next=$('assistant-next');
-    next.replaceChildren();
-    const list=entries.filter(x=>x.kind==='task'&&!x.archived&&x.state!=='done')
-      .sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,5);
+    const next=$('assistant-next');next.replaceChildren();
+    const list=activeTasks().filter(x=>x.state!=='done').sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')).slice(0,6);
     if(!list.length)next.append(el('p','Keine offenen To-Dos erfasst.','small'));
     list.forEach(item=>{
       const row=el('div',undefined,'mini-item');
-      row.append(
-        el('strong',item.title),
-        el('span',item.state==='waiting'?'Wartet':(item.due?dateLabel(item.due):bucketName(item.bucketId)))
-      );
+      row.append(el('strong',item.title),el('span',item.state==='waiting'?'Wartet':(item.due?dateLabel(item.due):bucketName(item.bucketId))));
       next.append(row);
     });
-
-    const signals=$('question-signals');
-    signals.replaceChildren();
-    const s=M.questionSignals(entries);
+    const signals=$('question-signals');signals.replaceChildren();const s=M.questionSignals(entries);
     const all=[...s.repeated.map(x=>({label:x.label,count:x.count})),...s.terms].slice(0,5);
     if(!all.length)signals.append(el('p','Noch keine wiederkehrenden Signale.','small'));
-    all.forEach(x=>{
-      const row=el('div',undefined,'signal-row');
-      row.append(el('span',x.label),el('strong',x.count+'×'));
-      signals.append(row);
-    });
+    all.forEach(x=>{const row=el('div',undefined,'signal-row');row.append(el('span',x.label),el('strong',x.count+'×'));signals.append(row);});
   }
 
   function todoFiltered(){
-    const q=$('todo-search')?.value||'';
-    const filter=$('todo-status-filter')?.value||'active';
-    return entries.filter(item=>{
-      if(item.kind!=='task'||item.archived)return false;
-      if(q && !M.matches(item,q))return false;
-      if(filter==='active' && item.state==='done')return false;
-      if(filter!=='active' && filter!=='all' && item.state!==filter)return false;
+    const q=$('todo-search')?.value||'',status=$('todo-status-filter')?.value||'active',priority=$('todo-priority-filter')?.value||'all';
+    return activeTasks().filter(item=>{
+      if(q&&!M.matches(item,q))return false;
+      if(status==='active'&&item.state==='done')return false;
+      if(status!=='active'&&status!=='all'&&item.state!==status)return false;
+      if(priority!=='all'&&item.priority!==priority)return false;
       return true;
     });
   }
 
+  function dueGroup(item){
+    if(!item.due)return 'none';
+    if(item.due<today()&&item.state!=='done')return 'overdue';
+    if(item.due===today())return 'today';
+    const d=new Date(today()+'T12:00:00');d.setDate(d.getDate()+7);
+    if(item.due<=M.todayLocal(d))return 'week';
+    return 'later';
+  }
+
+  function boardGroups(){
+    const mode=$('todo-group-by')?.value||'bucket';
+    if(mode==='bucket')return buckets.map(b=>({id:b.id,label:b.name,kind:'bucket'}));
+    if(mode==='state')return [
+      {id:'open',label:'Nicht begonnen',kind:'state'},{id:'progress',label:'In Bearbeitung',kind:'state'},
+      {id:'waiting',label:'Wartet',kind:'state'},{id:'done',label:'Abgeschlossen',kind:'state'}
+    ];
+    if(mode==='priority')return [
+      {id:'urgent',label:'Dringend',kind:'priority'},{id:'important',label:'Wichtig',kind:'priority'},
+      {id:'medium',label:'Mittel',kind:'priority'},{id:'low',label:'Niedrig',kind:'priority'}
+    ];
+    return [
+      {id:'overdue',label:'Überfällig',kind:'due'},{id:'today',label:'Heute',kind:'due'},
+      {id:'week',label:'Nächste 7 Tage',kind:'due'},{id:'later',label:'Später',kind:'due'},{id:'none',label:'Ohne Termin',kind:'due'}
+    ];
+  }
+
+  function groupMatches(item,group){
+    if(group.kind==='bucket')return item.bucketId===group.id;
+    if(group.kind==='state')return item.state===group.id;
+    if(group.kind==='priority')return item.priority===group.id;
+    return dueGroup(item)===group.id;
+  }
+
   function taskChecklistMeta(item){
-    const total=item.checklist?.length||0;
-    if(!total)return '';
-    const done=item.checklist.filter(x=>x.done).length;
-    return done+'/'+total;
+    const total=item.checklist?.length||0;if(!total)return '';
+    return item.checklist.filter(x=>x.done).length+'/'+total;
+  }
+
+  function labelChip(item,index){
+    const chip=el('span',item.name,'task-label label-'+(item.color||labelColors[index%labelColors.length]));
+    return chip;
   }
 
   function taskCard(item){
     const card=el('article',undefined,'planner-task'+(item.state==='done'?' is-done':''));
-    card.draggable=true;
-    card.dataset.taskId=item.id;
-    card.addEventListener('dragstart',event=>{
-      event.dataTransfer.effectAllowed='move';
-      event.dataTransfer.setData('text/plain',item.id);
-      card.classList.add('dragging');
-    });
+    card.draggable=true;card.dataset.taskId=item.id;
+    card.addEventListener('dragstart',event=>{event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',item.id);card.classList.add('dragging');});
     card.addEventListener('dragend',()=>card.classList.remove('dragging'));
 
-    const main=el('div',undefined,'planner-task-main');
-    const check=el('button',item.state==='done'?'✓':'','task-check');
-    check.type='button';
-    check.setAttribute('aria-label',item.state==='done'?'Wieder öffnen':'Als erledigt markieren');
-    check.addEventListener('click',async event=>{
-      event.stopPropagation();
-      await saveEntry({...item,state:item.state==='done'?'open':'done',updatedAt:new Date().toISOString()},'');
-    });
-    const title=el('button',item.title,'task-title');
-    title.type='button';
-    title.addEventListener('click',()=>editEntry(item));
-    main.append(check,title);
-    card.append(main);
-
-    if(item.body){
-      const excerpt=el('p',item.body.length>140?item.body.slice(0,140)+'…':item.body,'task-excerpt');
-      card.append(excerpt);
+    if(item.labels?.length){
+      const chips=el('div',undefined,'task-labels');
+      item.labels.slice(0,5).forEach((x,i)=>chips.append(labelChip(x,i)));card.append(chips);
     }
 
+    const main=el('div',undefined,'planner-task-main'),check=el('button',item.state==='done'?'✓':'','task-check');
+    check.type='button';check.setAttribute('aria-label',item.state==='done'?'Wieder öffnen':'Als abgeschlossen markieren');
+    check.addEventListener('click',async event=>{event.stopPropagation();if(item.state==='done')await saveEntry({...item,state:'open',updatedAt:new Date().toISOString()},'');else await completeTask(item);});
+    const title=el('button',item.title,'task-title');title.type='button';title.addEventListener('click',()=>openTaskDetail(item));
+    main.append(check,title);card.append(main);
+
+    if(item.showOnCard&&item.body)card.append(el('p',item.body.length>180?item.body.slice(0,180)+'…':item.body,'task-excerpt'));
+
     const meta=el('div',undefined,'planner-task-meta');
+    if(item.state==='progress')meta.append(el('span','In Bearbeitung','task-chip progress'));
     if(item.state==='waiting')meta.append(el('span','Wartet','task-chip waiting'));
     if(item.priority==='urgent')meta.append(el('span','Dringend','task-chip urgent'));
     else if(item.priority==='important')meta.append(el('span','Wichtig','task-chip important'));
     if(item.due)meta.append(el('span','▣ '+dateLabel(item.due),'task-date'+(isOverdue(item)?' overdue':'')));
-    const checklist=taskChecklistMeta(item);
-    if(checklist)meta.append(el('span','☑ '+checklist,'task-smallmeta'));
+    if(item.recurrence&&item.recurrence!=='none')meta.append(el('span','↻','task-smallmeta'));
+    const checklist=taskChecklistMeta(item);if(checklist)meta.append(el('span','☑ '+checklist,'task-smallmeta'));
     if(item.source)meta.append(el('span','⌕','task-smallmeta'));
     if(item.owner)meta.append(el('span',initials(item.owner),'task-avatar'));
-    card.append(meta);
-    return card;
+    card.append(meta);return card;
   }
 
-  function addTaskInline(bucket){
-    const wrap=el('div',undefined,'bucket-add-wrap');
-    const button=action('＋ Aufgabe hinzufügen',()=>openInline(),'bucket-add');
-    const form=el('form',undefined,'bucket-quick-form');
-    form.hidden=true;
-    const input=document.createElement('input');
-    input.type='text';input.maxLength=180;input.placeholder='Aufgabenname';
-    const actions=el('div',undefined,'bucket-quick-actions');
-    const add=el('button','Hinzufügen','small-primary');add.type='submit';
-    const cancel=action('Abbrechen',()=>closeInline(),'quiet');
-    actions.append(add,cancel);form.append(input,actions);
+  async function createTaskFast(title,bucketId,overrides={}){
+    const now=new Date().toISOString(),id=crypto.randomUUID();
+    const list=entries.filter(x=>x.kind==='task'&&x.bucketId===bucketId),max=list.reduce((m,x)=>Math.max(m,x.sortOrder||0),0);
+    const task=M.entry({id,kind:'task',state:'open',title,body:'',alternatives:'',outcome:'',owner:'',due:'',reference:'',source:null,bucketId:bucketId||buckets[0]?.id||'',sortOrder:max+10,priority:'medium',startDate:'',recurrence:'none',labels:[],showOnCard:false,checklist:[],createdAt:now,updatedAt:now,archived:false,...overrides});
+    entries.unshift(task);renderAll();
+    try{
+      const saved=await S.saveEntry(task),i=entries.findIndex(x=>x.id===id);if(i>=0)entries[i]=saved;renderAll();return saved;
+    }catch(error){
+      entries=entries.filter(x=>x.id!==id);renderAll();feedback('Aufgabe nicht gespeichert: '+error.message);throw error;
+    }
+  }
 
+  function addTaskInline(group){
+    const wrap=el('div',undefined,'bucket-add-wrap'),button=action('＋ Aufgabe hinzufügen',()=>openInline(),'bucket-add');
+    const form=el('form',undefined,'bucket-quick-form');form.hidden=true;
+    const input=document.createElement('input');input.type='text';input.maxLength=180;input.placeholder='Aufgabenname';
+    const actions=el('div',undefined,'bucket-quick-actions'),add=el('button','Hinzufügen','small-primary');add.type='submit',cancel=action('Abbrechen',()=>closeInline(),'quiet');
+    actions.append(add,cancel);form.append(input,actions);
     function openInline(){button.hidden=true;form.hidden=false;input.focus();}
     function closeInline(){form.hidden=true;button.hidden=false;input.value='';}
-    form.addEventListener('submit',async event=>{
-      event.preventDefault();
-      const title=input.value.trim();
-      if(!title)return;
-      const now=new Date().toISOString();
-      const list=entries.filter(x=>x.kind==='task'&&x.bucketId===bucket.id);
-      const max=list.reduce((m,x)=>Math.max(m,x.sortOrder||0),0);
-      await saveEntry(M.entry({
-        id:crypto.randomUUID(),kind:'task',state:'open',title,body:'',
-        alternatives:'',outcome:'',owner:'',due:'',reference:'',source:null,
-        bucketId:bucket.id,sortOrder:max+10,priority:'normal',checklist:[],
-        createdAt:now,updatedAt:now,archived:false
-      }),'');
+    form.addEventListener('submit',event=>{
+      event.preventDefault();const title=input.value.trim();if(!title)return;
       closeInline();
+      const bucketId=group.kind==='bucket'?group.id:(buckets[0]?.id||'');
+      const overrides={};
+      if(group.kind==='state')overrides.state=group.id;
+      if(group.kind==='priority')overrides.priority=group.id;
+      if(group.kind==='due'&&group.id==='today')overrides.due=today();
+      createTaskFast(title,bucketId,overrides).catch(()=>{});
     });
-    wrap.append(button,form);
-    return wrap;
+    wrap.append(button,form);return wrap;
   }
 
-  function bucketMenu(bucket){
-    const wrap=el('div',undefined,'bucket-menu-wrap');
-    const trigger=action('⋯',()=>{menu.hidden=!menu.hidden;},'bucket-menu-trigger');
-    trigger.setAttribute('aria-label','Bucket-Menü');
-    const menu=el('div',undefined,'bucket-menu');
-    menu.hidden=true;
+  function bucketMenu(group){
+    if(group.kind!=='bucket')return el('span','');
+    const bucket=buckets.find(x=>x.id===group.id),wrap=el('div',undefined,'bucket-menu-wrap'),trigger=action('⋯',()=>{menu.hidden=!menu.hidden;},'bucket-menu-trigger');
+    const menu=el('div',undefined,'bucket-menu');menu.hidden=true;
     menu.append(
       action('Umbenennen',()=>{menu.hidden=true;openBucketEditor(bucket);}),
-      action('Nach links',async()=>{
-        menu.hidden=true;
-        const i=buckets.findIndex(x=>x.id===bucket.id);
-        if(i<=0)return;
-        const prev=buckets[i-1];
-        const a=bucket.sortOrder,b=prev.sortOrder;
-        await Promise.all([saveBucket({...bucket,sortOrder:b}),saveBucket({...prev,sortOrder:a})]);
-        await refresh();
-      }),
-      action('Nach rechts',async()=>{
-        menu.hidden=true;
-        const i=buckets.findIndex(x=>x.id===bucket.id);
-        if(i<0||i>=buckets.length-1)return;
-        const next=buckets[i+1];
-        const a=bucket.sortOrder,b=next.sortOrder;
-        await Promise.all([saveBucket({...bucket,sortOrder:b}),saveBucket({...next,sortOrder:a})]);
-        await refresh();
-      }),
-      action('Bucket archivieren',async()=>{
-        menu.hidden=true;
-        try{
-          await S.archiveBucket(bucket.id);
-          buckets=buckets.filter(x=>x.id!==bucket.id);
-          renderTodos();
-          feedback('Bucket archiviert.');
-        }catch(error){feedback(error.message);}
-      })
+      action('Nach links',async()=>{menu.hidden=true;const i=buckets.findIndex(x=>x.id===bucket.id);if(i<=0)return;const prev=buckets[i-1],a=bucket.sortOrder,b=prev.sortOrder;await Promise.all([saveBucket({...bucket,sortOrder:b}),saveBucket({...prev,sortOrder:a})]);await refresh();}),
+      action('Nach rechts',async()=>{menu.hidden=true;const i=buckets.findIndex(x=>x.id===bucket.id);if(i<0||i>=buckets.length-1)return;const next=buckets[i+1],a=bucket.sortOrder,b=next.sortOrder;await Promise.all([saveBucket({...bucket,sortOrder:b}),saveBucket({...next,sortOrder:a})]);await refresh();}),
+      action('Bucket archivieren',async()=>{menu.hidden=true;try{await S.archiveBucket(bucket.id);buckets=buckets.filter(x=>x.id!==bucket.id);renderTodos();}catch(error){feedback(error.message);}})
     );
-    wrap.append(trigger,menu);
-    return wrap;
+    wrap.append(trigger,menu);return wrap;
+  }
+
+  async function dropTaskToGroup(item,group){
+    if(group.kind==='bucket')return saveEntry({...item,bucketId:group.id,updatedAt:new Date().toISOString()},'Aufgabe verschoben.');
+    if(group.kind==='state'){
+      if(group.id==='done'&&item.state!=='done')return completeTask(item);
+      return saveEntry({...item,state:group.id,updatedAt:new Date().toISOString()},'Status geändert.');
+    }
+    if(group.kind==='priority')return saveEntry({...item,priority:group.id,updatedAt:new Date().toISOString()},'Priorität geändert.');
+    if(group.kind==='due'){
+      let due=item.due;
+      if(group.id==='none')due='';
+      else if(group.id==='today')due=today();
+      else if(group.id==='week'){const d=new Date();d.setDate(d.getDate()+7);due=M.todayLocal(d);}
+      else if(group.id==='later'){const d=new Date();d.setDate(d.getDate()+14);due=M.todayLocal(d);}
+      else if(group.id==='overdue'){const d=new Date();d.setDate(d.getDate()-1);due=M.todayLocal(d);}
+      return saveEntry({...item,due,updatedAt:new Date().toISOString()},'Fälligkeit geändert.');
+    }
   }
 
   function renderBoard(){
-    const host=$('todo-board-view');
-    host.replaceChildren();
-    const tasks=todoFiltered();
-
-    buckets.forEach(bucket=>{
-      const column=el('section',undefined,'planner-bucket');
-      column.dataset.bucketId=bucket.id;
-      column.addEventListener('dragover',event=>{
-        event.preventDefault();
-        column.classList.add('drop-target');
-      });
+    const host=$('todo-board-view');host.replaceChildren();const tasks=todoFiltered(),groups=boardGroups();
+    groups.forEach(group=>{
+      const column=el('section',undefined,'planner-bucket');column.dataset.groupId=group.id;
+      column.addEventListener('dragover',event=>{event.preventDefault();column.classList.add('drop-target');});
       column.addEventListener('dragleave',()=>column.classList.remove('drop-target'));
-      column.addEventListener('drop',async event=>{
-        event.preventDefault();
-        column.classList.remove('drop-target');
-        const taskId=event.dataTransfer.getData('text/plain');
-        const item=entries.find(x=>x.id===taskId&&x.kind==='task');
-        if(!item||item.bucketId===bucket.id)return;
-        const max=entries.filter(x=>x.kind==='task'&&x.bucketId===bucket.id)
-          .reduce((m,x)=>Math.max(m,x.sortOrder||0),0);
-        await saveEntry({...item,bucketId:bucket.id,sortOrder:max+10,updatedAt:new Date().toISOString()},'Aufgabe verschoben.');
-      });
-
-      const header=el('div',undefined,'planner-bucket-head');
-      const titleWrap=el('div',undefined,'planner-bucket-title');
-      titleWrap.append(el('h3',bucket.name),el('span',String(tasks.filter(x=>x.bucketId===bucket.id).length),'bucket-count'));
-      header.append(titleWrap,bucketMenu(bucket));
-      column.append(header,addTaskInline(bucket));
-
-      const list=el('div',undefined,'planner-bucket-tasks');
-      const bucketTasks=tasks.filter(x=>x.bucketId===bucket.id)
-        .sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)||a.createdAt.localeCompare(b.createdAt));
-      bucketTasks.forEach(item=>list.append(taskCard(item)));
-      if(!bucketTasks.length)list.append(el('div','Keine Aufgaben','bucket-empty'));
-      column.append(list);
-      host.append(column);
+      column.addEventListener('drop',async event=>{event.preventDefault();column.classList.remove('drop-target');const id=event.dataTransfer.getData('text/plain'),item=entries.find(x=>x.id===id&&x.kind==='task');if(item&&!groupMatches(item,group))await dropTaskToGroup(item,group);});
+      const groupTasks=tasks.filter(x=>groupMatches(x,group)).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)||a.createdAt.localeCompare(b.createdAt));
+      const header=el('div',undefined,'planner-bucket-head'),titleWrap=el('div',undefined,'planner-bucket-title');
+      titleWrap.append(el('h3',group.label),el('span',String(groupTasks.length),'bucket-count'));header.append(titleWrap,bucketMenu(group));
+      column.append(header,addTaskInline(group));
+      const list=el('div',undefined,'planner-bucket-tasks');groupTasks.forEach(item=>list.append(taskCard(item)));if(!groupTasks.length)list.append(el('div','Keine Aufgaben','bucket-empty'));column.append(list);host.append(column);
     });
-
-    const addColumn=el('section',undefined,'planner-add-bucket');
-    addColumn.append(action('＋ Neuen Bucket hinzufügen',()=>openBucketEditor(null),'add-bucket-button'));
-    host.append(addColumn);
+    if(($('todo-group-by')?.value||'bucket')==='bucket'){
+      const addColumn=el('section',undefined,'planner-add-bucket');addColumn.append(action('＋ Neuen Bucket hinzufügen',()=>openBucketEditor(null),'add-bucket-button'));host.append(addColumn);
+    }
   }
 
   function renderGrid(){
-    const body=$('todo-grid-body');
-    body.replaceChildren();
+    const body=$('todo-grid-body');body.replaceChildren();
     const tasks=todoFiltered().sort((a,b)=>bucketName(a.bucketId).localeCompare(bucketName(b.bucketId))||(a.sortOrder||0)-(b.sortOrder||0));
     tasks.forEach(item=>{
-      const tr=document.createElement('tr');
-      const checkCell=document.createElement('td');
-      const check=el('button',item.state==='done'?'✓':'','task-check');
-      check.type='button';
-      check.addEventListener('click',()=>saveEntry({...item,state:item.state==='done'?'open':'done',updatedAt:new Date().toISOString()},''));
-      checkCell.append(check);
-      const titleCell=document.createElement('td');
-      const title=el('button',item.title,'grid-task-title');
-      title.type='button';title.addEventListener('click',()=>editEntry(item));titleCell.append(title);
-      for(const value of [bucketName(item.bucketId),states[item.state],priorities[item.priority]||'Normal',item.due?dateLabel(item.due):'',item.owner||'']){
-        const td=document.createElement('td');td.textContent=value;tr.append(td);
-      }
-      tr.prepend(checkCell,titleCell);
+      const tr=document.createElement('tr'),checkCell=document.createElement('td'),check=el('button',item.state==='done'?'✓':'','task-check');
+      check.type='button';check.addEventListener('click',()=>item.state==='done'?saveEntry({...item,state:'open',updatedAt:new Date().toISOString()},''):completeTask(item));checkCell.append(check);
+      const titleCell=document.createElement('td'),title=el('button',item.title,'grid-task-title');title.type='button';title.addEventListener('click',()=>openTaskDetail(item));titleCell.append(title);
+      tr.append(checkCell,titleCell);
+      [bucketName(item.bucketId),states[item.state],priorities[item.priority]||'Mittel',item.startDate?dateLabel(item.startDate):'',item.due?dateLabel(item.due):'',item.owner||''].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});
       body.append(tr);
     });
-    if(!tasks.length){
-      const tr=document.createElement('tr'),td=document.createElement('td');
-      td.colSpan=7;td.className='grid-empty';td.textContent='Keine passenden Aufgaben.';tr.append(td);body.append(tr);
+    if(!tasks.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=8;td.className='grid-empty';td.textContent='Keine passenden Aufgaben.';tr.append(td);body.append(tr);}
+  }
+
+  function renderCalendar(){
+    const title=$('calendar-title'),grid=$('calendar-grid');grid.replaceChildren();
+    const year=calendarDate.getFullYear(),month=calendarDate.getMonth();
+    title.textContent=new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric'}).format(new Date(year,month,1));
+    const first=new Date(year,month,1),days=new Date(year,month+1,0).getDate(),offset=(first.getDay()+6)%7;
+    for(let i=0;i<offset;i++)grid.append(el('div','', 'calendar-cell outside'));
+    const tasks=todoFiltered();
+    for(let day=1;day<=days;day++){
+      const d=new Date(year,month,day),key=M.todayLocal(d),cell=el('div',undefined,'calendar-cell'+(key===today()?' today':''));
+      cell.append(el('div',String(day),'calendar-day'));
+      tasks.filter(x=>x.due===key||(!x.due&&x.startDate===key)).slice(0,5).forEach(item=>{
+        const t=el('button',item.title,'calendar-task');t.type='button';t.addEventListener('click',()=>openTaskDetail(item));cell.append(t);
+      });
+      grid.append(cell);
     }
+  }
+
+  function chartBars(host,data){
+    host.replaceChildren();const max=Math.max(1,...data.map(x=>x.value));
+    data.forEach(item=>{
+      const row=el('div',undefined,'chart-row'),label=el('span',item.label),barWrap=el('div',undefined,'chart-bar-wrap'),bar=el('div',undefined,'chart-bar'),value=el('strong',String(item.value));
+      bar.style.width=Math.round(item.value/max*100)+'%';barWrap.append(bar);row.append(label,barWrap,value);host.append(row);
+    });
+  }
+
+  function renderCharts(){
+    const tasks=todoFiltered();
+    chartBars($('chart-status'),Object.entries(states).map(([id,label])=>({label,value:tasks.filter(x=>x.state===id).length})));
+    chartBars($('chart-priority'),['urgent','important','medium','low'].map(id=>({label:priorities[id],value:tasks.filter(x=>x.priority===id).length})));
+    chartBars($('chart-bucket'),buckets.map(b=>({label:b.name,value:tasks.filter(x=>x.bucketId===b.id).length})));
   }
 
   function renderTodos(){
     if(!$('todo-board-view'))return;
-    $('todo-board-view').hidden=todoView!=='board';
-    $('todo-grid-view').hidden=todoView!=='grid';
-    $('todo-view-board').setAttribute('aria-pressed',String(todoView==='board'));
-    $('todo-view-grid').setAttribute('aria-pressed',String(todoView==='grid'));
-    renderBoard();
-    renderGrid();
-  }
-
-  function renderMail(){
-    const q=$('mail-search').value;
-    const shown=mails.filter(x=>!x.archived&&M.mailMatches(x,q)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-    $('mail-count').textContent=shown.length+' E-Mail'+(shown.length===1?'':'s');
-    const host=$('mail-list');
-    host.replaceChildren();
-    if(!shown.length){
-      host.append(el('div','Noch keine passende E-Mail in der privaten Memory.','empty'));
-      return;
+    for(const view of ['board','grid','calendar','charts']){
+      const host=$(view==='board'?'todo-board-view':view==='grid'?'todo-grid-view':'todo-'+view+'-view');
+      host.hidden=todoView!==view;
+      $('todo-view-'+view)?.setAttribute('aria-pressed',String(todoView===view));
     }
-    shown.forEach(item=>{
-      const card=el('article',undefined,'mail-card');
-      const head=el('div',undefined,'mail-card-head');
-      head.append(
-        el('div',item.sender||'Absender nicht erfasst','mail-sender'),
-        el('div',item.date?dateLabel(item.date):'ohne Datum','mail-date')
-      );
-      card.append(head,el('h3',item.subject),el('p',item.body||'Kein Inhalt erfasst.','mail-body'));
-      const actions=el('div',undefined,'card-actions');
-      actions.append(
-        action('MINDS dazu fragen',()=>{
-          setScreen('assistant');
-          $('ask-input').value='Was steht in der E-Mail „'+item.subject+'“?';
-          $('ask-input').focus();
-        }),
-        action('Neu indexieren',async()=>{
-          try{await S.indexMailText(item);feedback('E-Mail neu indexiert.');}catch(error){feedback(error.message);}
-        }),
-        action('Archivieren',async()=>{
-          await saveMail({...item,archived:true,updatedAt:new Date().toISOString()});
-        })
-      );
-      card.append(actions);
-      host.append(card);
-    });
+    if(todoView==='board')renderBoard();
+    if(todoView==='grid')renderGrid();
+    if(todoView==='calendar')renderCalendar();
+    if(todoView==='charts')renderCharts();
   }
 
-  function renderMemoryCard(item){
-    const card=el('article',undefined,'entry');
-    const head=el('div',undefined,'entry-head');
-    head.append(el('span',labels[item.kind],'tag'),el('span',states[item.state],'state'));
-    if(item.archived)head.append(el('span','Archiviert'));
-    card.append(head,el('h3',item.title));
-    if(item.body)card.append(el('p',item.body));
-    if(item.kind==='task'&&item.bucketId)card.append(el('p','Bucket: '+bucketName(item.bucketId),'meta'));
-    if(item.alternatives)card.append(el('p','Alternativen: '+item.alternatives));
-    if(item.outcome)card.append(el('p','Auswirkungen: '+item.outcome));
-    if(item.owner)card.append(el('p','Verantwortlich / beteiligt: '+item.owner,'meta'));
-    if(item.due)card.append(el('p','Termin / Wiedervorlage: '+dateLabel(item.due),'meta'));
-    if(item.source){const p=el('p','Quelle: ','meta');p.append(link(item.source));card.append(p);}
-    if(item.reference)card.append(el('p','Fundstelle: '+item.reference,'meta'));
-    const actions=el('div',undefined,'card-actions');
-    actions.append(
-      action('Bearbeiten',()=>editEntry(item)),
-      action(item.archived?'Wiederherstellen':'Archivieren',()=>saveEntry({...item,archived:!item.archived,updatedAt:new Date().toISOString()},''))
-    );
-    card.append(actions);
-    return card;
+  function nextOccurrenceDate(value,rule){
+    const base=value?new Date(value+'T12:00:00'):new Date();
+    if(rule==='daily')base.setDate(base.getDate()+1);
+    else if(rule==='weekdays'){do{base.setDate(base.getDate()+1);}while([0,6].includes(base.getDay()));}
+    else if(rule==='weekly')base.setDate(base.getDate()+7);
+    else if(rule==='monthly')base.setMonth(base.getMonth()+1);
+    else if(rule==='yearly')base.setFullYear(base.getFullYear()+1);
+    return M.todayLocal(base);
   }
 
-  function renderSources(){
-    const host=$('sources');
-    host.replaceChildren();
-    sources.forEach(source=>{
-      const card=el('article',undefined,'source'),title=el('h3');
-      title.append(link(source));
-      card.append(
-        title,
-        el('p',source.meta||'Quellenverweis ohne Inhaltsprüfung'),
-        el('p','Erfasst: '+dateLabel(source.capturedAt)+(source.version?' · Referenz: '+source.version:''))
-      );
-      host.append(card);
-    });
+  async function completeTask(item){
+    const wasDone=item.state==='done',saved=await saveEntry({...item,state:'done',updatedAt:new Date().toISOString()},'');
+    if(!wasDone&&item.recurrence&&item.recurrence!=='none'){
+      const basis=item.due||item.startDate||today(),next=nextOccurrenceDate(basis,item.recurrence);
+      const start=item.startDate?nextOccurrenceDate(item.startDate,item.recurrence):'';
+      await createTaskFast(item.title,item.bucketId,{body:item.body,owner:item.owner,due:item.due?next:'',startDate:start,reference:item.reference,source:item.source,priority:item.priority,recurrence:item.recurrence,labels:item.labels,showOnCard:item.showOnCard,checklist:(item.checklist||[]).map(x=>({...x,id:crypto.randomUUID(),done:false}))});
+      feedback('Aufgabe abgeschlossen; nächste Wiederholung wurde erstellt.');
+    }else feedback('Aufgabe abgeschlossen.');
+    return saved;
   }
 
-  function renderMemory(){
-    const filter=$('memory-filter').value,isSources=filter==='sources';
-    $('entries').hidden=isSources;
-    $('source-panel').hidden=!isSources;
-    if(isSources){
-      $('result-summary').textContent=sources.length+' Quellenverweise';
-      renderSources();
-      return;
-    }
-    const archived=$('show-archived').checked,query=$('search').value;
-    let shown=entries.filter(x=>x.archived===archived&&M.matches(x,query));
-    if(filter!=='all')shown=shown.filter(x=>x.kind===filter);
-    shown.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
-    $('result-summary').textContent=shown.length+' Eintr'+(shown.length===1?'ag':'äge');
-    const host=$('entries');
-    host.replaceChildren();
-    if(!shown.length)host.append(el('div','Keine passenden Erinnerungen.','empty'));
-    shown.forEach(item=>host.append(renderMemoryCard(item)));
-  }
-
-  function renderAll(){
-    metrics();
-    renderChat();
-    renderAssistantSide();
-    renderTodos();
-    renderMail();
-    renderMemory();
-  }
-
-  function fillSourceOptions(selected=originalSource){
-    draftSources=sources.map(x=>({...x}));
-    const select=$('entry-source');
-    select.replaceChildren(new Option('Eigene Notiz · ohne Dokumentbeleg',''));
+  function fillTaskSources(selected){
+    draftSources=sources.map(x=>({...x}));const select=$('task-source');
+    select.replaceChildren(new Option('Keine Projektquelle',''));
     if(selected)select.add(new Option(selected.title+' · gespeicherter Verweis','__snapshot'));
     draftSources.forEach((source,index)=>select.add(new Option(source.title,String(index))));
     select.value=selected?'__snapshot':'';
   }
 
-  function fillBucketOptions(selected=''){
-    const select=$('entry-bucket');
-    if(!select)return;
-    select.replaceChildren();
+  function fillTaskBuckets(selected){
+    const select=$('task-bucket');select.replaceChildren();
     buckets.forEach(bucket=>select.add(new Option(bucket.name,bucket.id)));
     select.value=selected&&buckets.some(x=>x.id===selected)?selected:(buckets[0]?.id||'');
   }
 
-  function checklistText(item){
-    return (item?.checklist||[]).map(x=>(x.done?'[x] ':'')+x.text).join('\n');
-  }
-
-  function parseChecklist(text,previous=[]){
-    const byText=new Map(previous.map(x=>[M.normalize(x.text),x]));
-    return String(text||'').split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,100).map(line=>{
-      const done=/^\[(x|✓)\]\s*/i.test(line);
-      const clean=line.replace(/^\[(x|✓| )\]\s*/i,'').trim();
-      const old=byText.get(M.normalize(clean));
-      return {id:old?.id||crypto.randomUUID(),text:clean,done:old?old.done:done};
+  function parseLabels(text,old=[]){
+    const oldMap=new Map(old.map(x=>[M.normalize(x.name),x]));
+    return String(text||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,25).map((name,index)=>{
+      const prev=oldMap.get(M.normalize(name));
+      return prev||{id:crypto.randomUUID(),name,color:labelColors[index%labelColors.length]};
     });
   }
 
-  function toggleTaskFields(){
-    $('task-fields').hidden=$('entry-kind').value!=='task';
+  function renderChecklistEditor(){
+    const host=$('task-checklist');host.replaceChildren();
+    taskChecklistDraft.forEach((item,index)=>{
+      const row=el('div',undefined,'checklist-row'),check=document.createElement('input');check.type='checkbox';check.checked=item.done;
+      check.addEventListener('change',()=>{taskChecklistDraft[index].done=check.checked;});
+      const input=document.createElement('input');input.value=item.text;input.maxLength=500;input.placeholder='Checklistenpunkt';
+      input.addEventListener('input',()=>{taskChecklistDraft[index].text=input.value;});
+      const remove=action('×',()=>{taskChecklistDraft.splice(index,1);renderChecklistEditor();},'checklist-remove');
+      row.append(check,input,remove);host.append(row);
+    });
   }
 
-  function editEntry(item=null,kind=null,presetBucket=''){
-    editing=item;
-    originalSource=item?.source||null;
-    $('entry-form').reset();
-    $('editor-title').textContent=item?'Eintrag bearbeiten':(kind==='task'?'Aufgabe':'Erinnerung erfassen');
-    $('entry-kind').value=item?.kind||kind||'note';
-    $('entry-state').value=item?.state||'open';
-    for(const field of ['title','body','alternatives','outcome','owner','due','reference'])$('entry-'+field).value=item?.[field]||'';
-    $('entry-priority').value=item?.priority||'normal';
-    $('entry-checklist').value=checklistText(item);
-    fillBucketOptions(item?.bucketId||presetBucket);
-    fillSourceOptions();
-    $('decision-fields').hidden=$('entry-kind').value!=='decision';
-    toggleTaskFields();
-    $('form-error').textContent='';
-    $('editor').showModal();
-    $('entry-title').focus();
+  async function loadTaskSideData(id){
+    if(!id||!entries.some(x=>x.id===id)){taskComments=[];taskFiles=[];renderTaskComments();renderTaskFiles();return;}
+    [taskComments,taskFiles]=await Promise.all([S.loadTaskComments(id),S.loadTaskFiles(id)]);
+    renderTaskComments();renderTaskFiles();
+  }
+
+  function renderTaskComments(){
+    const host=$('task-comments');host.replaceChildren();
+    if(!taskComments.length){host.append(el('div','Noch keine Unterhaltung.','comment-empty'));return;}
+    taskComments.forEach(comment=>{
+      const card=el('div',undefined,'task-comment'),meta=el('div',stampLabel(comment.createdAt),'comment-meta');
+      card.append(meta,el('p',comment.content));host.append(card);
+    });
+    host.scrollTop=host.scrollHeight;
+  }
+
+  function renderTaskFiles(){
+    const host=$('task-file-list');host.replaceChildren();$('task-file-count').textContent=taskFiles.length?String(taskFiles.length):'';
+    if(!taskFiles.length){host.append(el('p','Noch keine Anlagen.','small'));return;}
+    taskFiles.forEach(file=>{
+      const row=el('div',undefined,'task-file-row'),name=el('button',file.filename,'task-file-open');name.type='button';
+      name.addEventListener('click',async()=>{try{const url=await S.signedTaskFile(file);window.open(url,'_blank','noopener');}catch(error){feedback(error.message);}});
+      row.append(name,el('span',file.external_url?'Link':(file.size_bytes?Math.round(file.size_bytes/1024)+' KB':'')));host.append(row);
+    });
+  }
+
+  function setTaskTab(tab){
+    document.querySelectorAll('[data-task-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.taskTab===tab)));
+    $('task-tab-details').hidden=tab!=='details';$('task-tab-attachments').hidden=tab!=='attachments';
+  }
+
+  async function openTaskDetail(item=null,preset={}){
+    const now=new Date().toISOString();
+    taskEditing=item||M.entry({id:crypto.randomUUID(),kind:'task',state:preset.state||'open',title:'',body:'',alternatives:'',outcome:'',owner:'',due:preset.due||'',reference:'',source:null,bucketId:preset.bucketId||buckets[0]?.id||'',sortOrder:0,priority:preset.priority||'medium',startDate:'',recurrence:'none',labels:[],showOnCard:false,checklist:[],createdAt:now,updatedAt:now,archived:false});
+    originalSource=taskEditing.source||null;taskChecklistDraft=(taskEditing.checklist||[]).map(x=>({...x}));
+    $('task-title-input').value=taskEditing.title;$('task-owner').value=taskEditing.owner||'';$('task-state').value=taskEditing.state;
+    $('task-priority').value=taskEditing.priority||'medium';$('task-start').value=taskEditing.startDate||'';$('task-due').value=taskEditing.due||'';
+    $('task-recurrence').value=taskEditing.recurrence||'none';$('task-labels').value=(taskEditing.labels||[]).map(x=>x.name).join(', ');
+    $('task-notes').value=taskEditing.body||'';$('task-show-card').checked=Boolean(taskEditing.showOnCard);$('task-reference').value=taskEditing.reference||'';
+    $('task-meta-line').textContent=entries.some(x=>x.id===taskEditing.id)?('Erstellt '+stampLabel(taskEditing.createdAt)+' · zuletzt geändert '+stampLabel(taskEditing.updatedAt)):'Neue Aufgabe';
+    $('task-complete-toggle').textContent=taskEditing.state==='done'?'✓':'';
+    $('task-complete-toggle').classList.toggle('is-complete',taskEditing.state==='done');
+    fillTaskBuckets(taskEditing.bucketId);fillTaskSources(taskEditing.source);renderChecklistEditor();setTaskTab('details');
+    $('task-detail').showModal();
+    await loadTaskSideData(taskEditing.id);
+    $('task-title-input').focus();
+  }
+
+  async function taskFromForm(){
+    const now=new Date().toISOString(),selected=$('task-source').value,was=entries.find(x=>x.id===taskEditing.id);
+    const draft=M.entry({...taskEditing,title:$('task-title-input').value.trim(),owner:$('task-owner').value.trim(),state:$('task-state').value,priority:$('task-priority').value,startDate:$('task-start').value,due:$('task-due').value,recurrence:$('task-recurrence').value,bucketId:$('task-bucket').value,labels:parseLabels($('task-labels').value,taskEditing.labels||[]),checklist:taskChecklistDraft.filter(x=>x.text.trim()).map(x=>({...x,text:x.text.trim()})),body:$('task-notes').value.trim(),showOnCard:$('task-show-card').checked,reference:$('task-reference').value.trim(),source:selected==='__snapshot'?originalSource:selected===''?null:draftSources[Number(selected)],updatedAt:now});
+    if(!draft.title)throw new Error('Aufgabe braucht einen Titel.');
+    const saved=await saveEntry(draft,'Aufgabe gespeichert.');
+    taskEditing=saved;
+    if(was&&was.state!=='done'&&saved.state==='done'&&saved.recurrence!=='none')await completeTask({...saved,state:was.state});
+    return saved;
+  }
+
+  async function duplicateTask(){
+    const original=await taskFromForm(),now=new Date().toISOString();
+    const copy=M.entry({...original,id:crypto.randomUUID(),title:original.title+' – Kopie',state:'open',checklist:(original.checklist||[]).map(x=>({...x,id:crypto.randomUUID(),done:false})),createdAt:now,updatedAt:now});
+    const saved=await saveEntry(copy,'Aufgabe dupliziert.');$('task-detail').close();openTaskDetail(saved);
   }
 
   function openBucketEditor(bucket=null){
-    editingBucket=bucket;
-    $('bucket-form').reset();
-    $('bucket-editor-title').textContent=bucket?'Bucket umbenennen':'Neuen Bucket hinzufügen';
-    $('bucket-name').value=bucket?.name||'';
-    $('bucket-form-error').textContent='';
-    $('bucket-editor').showModal();
-    $('bucket-name').focus();
+    editingBucket=bucket;$('bucket-form').reset();$('bucket-editor-title').textContent=bucket?'Bucket umbenennen':'Neuen Bucket hinzufügen';$('bucket-name').value=bucket?.name||'';$('bucket-form-error').textContent='';$('bucket-editor').showModal();$('bucket-name').focus();
   }
 
-  $('entry-kind').addEventListener('change',()=>{
-    $('decision-fields').hidden=$('entry-kind').value!=='decision';
-    toggleTaskFields();
-  });
+  function renderMail(){
+    const q=$('mail-search').value,shown=mails.filter(x=>!x.archived&&M.mailMatches(x,q)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    $('mail-count').textContent=shown.length+' E-Mail'+(shown.length===1?'':'s');const host=$('mail-list');host.replaceChildren();
+    if(!shown.length){host.append(el('div','Noch keine passende E-Mail in der privaten Memory.','empty'));return;}
+    shown.forEach(item=>{
+      const card=el('article',undefined,'mail-card'),head=el('div',undefined,'mail-card-head');
+      head.append(el('div',item.sender||'Absender nicht erfasst','mail-sender'),el('div',item.date?dateLabel(item.date):'ohne Datum','mail-date'));
+      card.append(head,el('h3',item.subject),el('p',item.body||'Kein Text extrahiert.','mail-body'));
+      const actions=el('div',undefined,'card-actions');
+      actions.append(action('MINDS dazu fragen',()=>{setScreen('assistant');$('ask-input').value='Was steht in der E-Mail „'+item.subject+'“?';$('ask-input').focus();}),action('Neu indexieren',async()=>{try{await S.indexMailText(item);feedback('E-Mail neu indexiert.');}catch(error){feedback(error.message);}}),action('Archivieren',()=>saveMail({...item,archived:true,updatedAt:new Date().toISOString()})));
+      card.append(actions);host.append(card);
+    });
+  }
 
+  async function importMailFiles(fileList){
+    const files=[...fileList].filter(Boolean);
+    if(!files.length)return;
+    const status=$('mail-import-status');let imported=0,skipped=0,failed=0;
+    status.textContent='Importiere '+files.length+' E-Mail'+(files.length===1?'':'s')+' …';
+    for(const file of files){
+      try{
+        if(!window.MindsMailImport)throw new Error('E-Mail-Parser ist noch nicht geladen.');
+        const parsed=await window.MindsMailImport.parseFile(file);
+        if(parsed.mail.messageId&&mails.some(x=>x.messageId&&x.messageId===parsed.mail.messageId)){skipped++;continue;}
+        const now=new Date().toISOString(),mail=M.mail({id:crypto.randomUUID(),sender:parsed.mail.sender||'',recipients:parsed.mail.recipients||'',subject:parsed.mail.subject||file.name,body:parsed.mail.body||'',date:parsed.mail.date||'',messageId:parsed.mail.messageId||'',threadKey:parsed.mail.threadKey||'',createdAt:now,updatedAt:now,archived:false});
+        const saved=await S.saveMail(mail);
+        await S.uploadRawMailFile(saved.id,file);
+        for(const attachment of parsed.attachments||[])await S.uploadMailFile(saved.id,attachment);
+        mails.unshift(saved);imported++;renderMail();metrics();
+      }catch(error){failed++;console.error('Mail import failed',file.name,error);feedback(file.name+': '+error.message);}
+      status.textContent='Import: '+imported+' gespeichert · '+skipped+' bereits vorhanden · '+failed+' Fehler';
+    }
+    renderAll();
+  }
+
+  function setupMailDrop(){
+    const zone=$('mail-drop'),input=$('mail-drop-input');
+    ['dragenter','dragover'].forEach(type=>zone.addEventListener(type,event=>{event.preventDefault();zone.classList.add('drag-active');}));
+    ['dragleave','drop'].forEach(type=>zone.addEventListener(type,event=>{event.preventDefault();zone.classList.remove('drag-active');}));
+    zone.addEventListener('drop',event=>importMailFiles(event.dataTransfer.files));
+    input.addEventListener('change',()=>{importMailFiles(input.files);input.value='';});
+    zone.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();input.click();}});
+  }
+
+  function renderMemoryCard(item){
+    const card=el('article',undefined,'entry'),head=el('div',undefined,'entry-head');head.append(el('span',labels[item.kind],'tag'),el('span',states[item.state]||item.state,'state'));if(item.archived)head.append(el('span','Archiviert'));card.append(head,el('h3',item.title));
+    if(item.body)card.append(el('p',item.body));if(item.alternatives)card.append(el('p','Alternativen: '+item.alternatives));if(item.outcome)card.append(el('p','Auswirkungen: '+item.outcome));if(item.owner)card.append(el('p','Verantwortlich / beteiligt: '+item.owner,'meta'));if(item.due)card.append(el('p','Termin / Wiedervorlage: '+dateLabel(item.due),'meta'));if(item.source){const p=el('p','Quelle: ','meta');p.append(link(item.source));card.append(p);}if(item.reference)card.append(el('p','Fundstelle: '+item.reference,'meta'));
+    const actions=el('div',undefined,'card-actions');actions.append(action('Bearbeiten',()=>editEntry(item)),action(item.archived?'Wiederherstellen':'Archivieren',()=>saveEntry({...item,archived:!item.archived,updatedAt:new Date().toISOString()},'')));card.append(actions);return card;
+  }
+
+  function renderSources(){
+    const host=$('sources');host.replaceChildren();sources.forEach(source=>{const card=el('article',undefined,'source'),title=el('h3');title.append(link(source));card.append(title,el('p',source.meta||'Quellenverweis'),el('p','Erfasst: '+dateLabel(source.capturedAt)+(source.version?' · Referenz: '+source.version:'')));host.append(card);});
+  }
+
+  function renderMemory(){
+    const filter=$('memory-filter').value,isSources=filter==='sources';$('entries').hidden=isSources;$('source-panel').hidden=!isSources;
+    if(isSources){$('result-summary').textContent=sources.length+' Quellenverweise';renderSources();return;}
+    const archived=$('show-archived').checked,query=$('search').value;let shown=entries.filter(x=>x.kind!=='task'&&x.archived===archived&&M.matches(x,query));
+    if(filter!=='all')shown=shown.filter(x=>x.kind===filter);shown.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));$('result-summary').textContent=shown.length+' Eintr'+(shown.length===1?'ag':'äge');
+    const host=$('entries');host.replaceChildren();if(!shown.length)host.append(el('div','Keine passenden Erinnerungen.','empty'));shown.forEach(item=>host.append(renderMemoryCard(item)));
+  }
+
+  function renderAll(){metrics();renderChat();renderAssistantSide();renderTodos();renderMail();renderMemory();}
+
+  function fillSourceOptions(selected=originalSource){
+    draftSources=sources.map(x=>({...x}));const select=$('entry-source');select.replaceChildren(new Option('Eigene Notiz · ohne Dokumentbeleg',''));
+    if(selected)select.add(new Option(selected.title+' · gespeicherter Verweis','__snapshot'));draftSources.forEach((source,index)=>select.add(new Option(source.title,String(index))));select.value=selected?'__snapshot':'';
+  }
+
+  function editEntry(item=null){
+    editing=item;originalSource=item?.source||null;$('entry-form').reset();$('editor-title').textContent=item?'Eintrag bearbeiten':'Erinnerung erfassen';$('entry-kind').value=item?.kind||'note';$('entry-state').value=item?.state==='done'?'done':'open';
+    for(const field of ['title','body','alternatives','outcome','owner','due','reference'])$('entry-'+field).value=item?.[field]||'';
+    fillSourceOptions();$('decision-fields').hidden=$('entry-kind').value!=='decision';$('form-error').textContent='';$('editor').showModal();$('entry-title').focus();
+  }
+
+  function openMailEditor(){$('mail-form').reset();$('mail-date').value=today();$('mail-form-error').textContent='';$('mail-editor').showModal();$('mail-sender').focus();}
+
+  $('entry-kind').addEventListener('change',()=>{$('decision-fields').hidden=$('entry-kind').value!=='decision';});
   $('entry-form').addEventListener('submit',async event=>{
     event.preventDefault();
     try{
-      const now=new Date().toISOString(),selected=$('entry-source').value;
-      const isTask=$('entry-kind').value==='task';
-      const draft={
-        id:editing?.id||crypto.randomUUID(),
-        createdAt:editing?.createdAt||now,
-        updatedAt:now,
-        kind:$('entry-kind').value,
-        state:$('entry-state').value,
-        archived:editing?.archived||false,
-        source:selected==='__snapshot'?originalSource:selected===''?null:draftSources[Number(selected)],
-        bucketId:isTask?$('entry-bucket').value:'',
-        sortOrder:editing?.sortOrder||0,
-        priority:isTask?$('entry-priority').value:'normal',
-        checklist:isTask?parseChecklist($('entry-checklist').value,editing?.checklist||[]):[]
-      };
+      const now=new Date().toISOString(),selected=$('entry-source').value,draft={id:editing?.id||crypto.randomUUID(),createdAt:editing?.createdAt||now,updatedAt:now,kind:$('entry-kind').value,state:$('entry-state').value,archived:editing?.archived||false,source:selected==='__snapshot'?originalSource:selected===''?null:draftSources[Number(selected)],bucketId:'',sortOrder:0,priority:'medium',startDate:'',recurrence:'none',labels:[],showOnCard:false,checklist:[]};
       for(const field of ['title','body','alternatives','outcome','owner','due','reference'])draft[field]=$('entry-'+field).value.trim();
-      await saveEntry(M.entry(draft));
-      $('editor').close();
-    }catch(error){
-      $('form-error').textContent=error.message;
-    }
+      await saveEntry(M.entry(draft));$('editor').close();
+    }catch(error){$('form-error').textContent=error.message;}
   });
 
-  $('bucket-form').addEventListener('submit',async event=>{
-    event.preventDefault();
-    try{
-      const name=$('bucket-name').value.trim();
-      if(!name)throw new Error('Bucket braucht einen Namen.');
-      const max=buckets.reduce((m,x)=>Math.max(m,x.sortOrder||0),0);
-      await saveBucket({
-        id:editingBucket?.id,
-        name,
-        sortOrder:editingBucket?.sortOrder ?? (max+10),
-        archived:false,
-        createdAt:editingBucket?.createdAt
-      });
-      $('bucket-editor').close();
-      editingBucket=null;
-    }catch(error){
-      $('bucket-form-error').textContent=error.message;
-    }
-  });
+  $('task-form').addEventListener('submit',async event=>{event.preventDefault();try{await taskFromForm();$('task-detail').close();}catch(error){feedback(error.message);}});
+  $('task-complete-toggle').addEventListener('click',async()=>{if(!taskEditing)return;if(taskEditing.state==='done'){taskEditing=await saveEntry({...taskEditing,state:'open',updatedAt:new Date().toISOString()},'Aufgabe wieder geöffnet.');$('task-state').value='open';$('task-complete-toggle').textContent='';}else{taskEditing=await taskFromForm();await completeTask(taskEditing);$('task-detail').close();}});
+  $('task-copy').addEventListener('click',()=>duplicateTask().catch(error=>feedback(error.message)));
+  $('task-archive').addEventListener('click',async()=>{if(!taskEditing)return;await saveEntry({...taskEditing,archived:true,updatedAt:new Date().toISOString()},'Aufgabe archiviert.');$('task-detail').close();});
+  $('close-task-detail').addEventListener('click',()=>$('task-detail').close());
+  document.querySelectorAll('[data-task-tab]').forEach(button=>button.addEventListener('click',()=>setTaskTab(button.dataset.taskTab)));
+  $('add-checklist-item').addEventListener('click',()=>{taskChecklistDraft.push({id:crypto.randomUUID(),text:'',done:false});renderChecklistEditor();setTimeout(()=>document.querySelector('#task-checklist .checklist-row:last-child input[type=text]')?.focus(),0);});
+  $('task-comment-send').addEventListener('click',async()=>{if(!taskEditing||!entries.some(x=>x.id===taskEditing.id)){feedback('Aufgabe zuerst speichern.');return;}const input=$('task-comment-input'),value=input.value.trim();if(!value)return;const saved=await S.addTaskComment(taskEditing.id,value);taskComments.push(saved);input.value='';renderTaskComments();});
+  $('task-file-input').addEventListener('change',async()=>{if(!taskEditing||!entries.some(x=>x.id===taskEditing.id)){feedback('Aufgabe zuerst speichern.');$('task-file-input').value='';return;}for(const file of [...$('task-file-input').files])taskFiles.push(await S.uploadTaskFile(taskEditing.id,file));$('task-file-input').value='';renderTaskFiles();});
+  $('task-add-link').addEventListener('click',async()=>{if(!taskEditing||!entries.some(x=>x.id===taskEditing.id)){feedback('Aufgabe zuerst speichern.');return;}const url=$('task-link-url').value.trim(),label=$('task-link-label').value.trim()||'Link';if(!url)return;taskFiles.push(await S.addTaskLink(taskEditing.id,url,label));$('task-link-url').value='';$('task-link-label').value='';renderTaskFiles();});
 
-  function openMailEditor(){
-    $('mail-form').reset();
-    $('mail-date').value=M.todayLocal();
-    $('mail-form-error').textContent='';
-    $('mail-editor').showModal();
-    $('mail-sender').focus();
-  }
+  $('bucket-form').addEventListener('submit',async event=>{event.preventDefault();try{const name=$('bucket-name').value.trim();if(!name)throw new Error('Bucket braucht einen Namen.');const max=buckets.reduce((m,x)=>Math.max(m,x.sortOrder||0),0);await saveBucket({id:editingBucket?.id,name,sortOrder:editingBucket?.sortOrder??(max+10),archived:false,createdAt:editingBucket?.createdAt});$('bucket-editor').close();editingBucket=null;}catch(error){$('bucket-form-error').textContent=error.message;}});
 
-  $('mail-form').addEventListener('submit',async event=>{
-    event.preventDefault();
-    try{
-      const now=new Date().toISOString();
-      const value=M.mail({
-        id:crypto.randomUUID(),
-        sender:$('mail-sender').value.trim(),
-        recipients:$('mail-recipients').value.trim(),
-        subject:$('mail-subject').value.trim(),
-        body:$('mail-body').value.trim(),
-        date:$('mail-date').value,
-        messageId:'',threadKey:'',
-        createdAt:now,updatedAt:now,archived:false
-      });
-      await saveMail(value,[...$('mail-files').files]);
-      $('mail-editor').close();
-    }catch(error){
-      $('mail-form-error').textContent=error.message;
-    }
-  });
+  $('mail-form').addEventListener('submit',async event=>{event.preventDefault();try{const now=new Date().toISOString(),value=M.mail({id:crypto.randomUUID(),sender:$('mail-sender').value.trim(),recipients:$('mail-recipients').value.trim(),subject:$('mail-subject').value.trim(),body:$('mail-body').value.trim(),date:$('mail-date').value,messageId:'',threadKey:'',createdAt:now,updatedAt:now,archived:false});await saveMail(value,[...$('mail-files').files]);$('mail-editor').close();}catch(error){$('mail-form-error').textContent=error.message;}});
 
-  $('ask-form').addEventListener('submit',async event=>{
-    event.preventDefault();
-    const prompt=$('ask-input').value.trim();
-    if(!prompt)return;
-    $('ask-input').value='';
-    try{await ask(prompt,true);}catch(error){feedback(error.message);}
-  });
-
-  document.querySelectorAll('[data-prompt]').forEach(button=>{
-    button.addEventListener('click',()=>ask(button.dataset.prompt,true).catch(error=>feedback(error.message)));
-  });
-
-  $('clear-chat').addEventListener('click',async()=>{
-    try{
-      await S.newConversation();
-      chat=[];
-      renderChat();
-      feedback('Neue Arbeitskonversation gestartet.');
-    }catch(error){feedback(error.message);}
-  });
-
+  $('ask-form').addEventListener('submit',async event=>{event.preventDefault();const prompt=$('ask-input').value.trim();if(!prompt)return;$('ask-input').value='';try{await ask(prompt,true);}catch(error){feedback(error.message);}});
+  document.querySelectorAll('[data-prompt]').forEach(button=>button.addEventListener('click',()=>ask(button.dataset.prompt,true).catch(error=>feedback(error.message))));
+  $('clear-chat').addEventListener('click',async()=>{try{await S.newConversation();chat=[];renderChat();feedback('Neue Arbeitskonversation gestartet.');}catch(error){feedback(error.message);}});
   document.querySelectorAll('[data-screen]').forEach(button=>button.addEventListener('click',()=>setScreen(button.dataset.screen)));
-  document.querySelectorAll('[data-todo-view]').forEach(button=>button.addEventListener('click',()=>{
-    todoView=button.dataset.todoView;
-    renderTodos();
-  }));
-
-  $('new-todo').addEventListener('click',()=>editEntry(null,'task',buckets[0]?.id||''));
-  $('new-entry').addEventListener('click',()=>editEntry(null,'note'));
-  $('new-mail').addEventListener('click',openMailEditor);
-  $('todo-search').addEventListener('input',renderTodos);
-  $('todo-status-filter').addEventListener('change',renderTodos);
-
+  document.querySelectorAll('[data-todo-view]').forEach(button=>button.addEventListener('click',()=>{todoView=button.dataset.todoView;renderTodos();}));
+  $('new-todo').addEventListener('click',()=>openTaskDetail(null,{bucketId:buckets[0]?.id||''}));
+  $('new-entry').addEventListener('click',()=>editEntry(null));$('new-mail').addEventListener('click',openMailEditor);
+  $('todo-search').addEventListener('input',renderTodos);$('todo-status-filter').addEventListener('change',renderTodos);$('todo-priority-filter').addEventListener('change',renderTodos);$('todo-group-by').addEventListener('change',renderTodos);
+  $('calendar-prev').addEventListener('click',()=>{calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()-1,1);renderCalendar();});
+  $('calendar-next').addEventListener('click',()=>{calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()+1,1);renderCalendar();});
   for(const id of ['close-editor','cancel-editor'])$(id).addEventListener('click',()=>$('editor').close());
   for(const id of ['close-mail-editor','cancel-mail-editor'])$(id).addEventListener('click',()=>$('mail-editor').close());
   for(const id of ['close-bucket-editor','cancel-bucket-editor'])$(id).addEventListener('click',()=>$('bucket-editor').close());
+  $('mail-search').addEventListener('input',renderMail);$('search').addEventListener('input',renderMemory);$('memory-filter').addEventListener('change',renderMemory);$('show-archived').addEventListener('change',renderMemory);
 
-  $('mail-search').addEventListener('input',renderMail);
-  $('search').addEventListener('input',renderMemory);
-  $('memory-filter').addEventListener('change',renderMemory);
-  $('show-archived').addEventListener('change',renderMemory);
-
-  function download(text,filename){
-    const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
-    const a=document.createElement('a');
-    a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
-  }
-
-  $('export').addEventListener('click',()=>{
-    download(JSON.stringify({
-      schemaVersion:4,project:'bernried',exportedAt:new Date().toISOString(),entries,mails,buckets,chat
-    },null,2),'minds-work-bernried-'+M.todayLocal()+'.json');
-  });
-
-  $('import').addEventListener('change',async event=>{
-    const file=event.target.files[0];
-    try{
-      if(!file)return;
-      const data=JSON.parse(await file.text());
-      if(data?.project!=='bernried')throw new Error('Falsches Projekt.');
-      for(const bucket of data.buckets||[])await saveBucket(bucket);
-      for(const entry of data.entries||[])await saveEntry(M.entry(entry),'');
-      for(const mail of data.mails||[])await saveMail(M.mail(mail));
-      await refresh();
-      feedback('Backup in private Memory importiert.');
-    }catch(error){
-      feedback('Import abgebrochen: '+error.message);
-    }finally{event.target.value='';}
-  });
+  function download(text,filename){const url=URL.createObjectURL(new Blob([text],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  $('export').addEventListener('click',()=>download(JSON.stringify({schemaVersion:5,project:'bernried',exportedAt:new Date().toISOString(),entries,mails,buckets,chat},null,2),'minds-work-bernried-'+today()+'.json'));
+  $('import').addEventListener('change',async event=>{const file=event.target.files[0];try{if(!file)return;const data=JSON.parse(await file.text());if(data?.project!=='bernried')throw new Error('Falsches Projekt.');for(const bucket of data.buckets||[])await saveBucket(bucket);for(const entry of data.entries||[])await saveEntry(M.entry(entry),'');for(const mail of data.mails||[])await saveMail(M.mail(mail));await refresh();feedback('Backup importiert.');}catch(error){feedback('Import abgebrochen: '+error.message);}finally{event.target.value='';}});
 
   function acceptContext(context){
     if(context.project!=='bernried'||!Array.isArray(context.sources)||context.sources.length>500)return;
-    try{
-      sources=context.sources.map(M.source);
-      $('project-name').textContent=String(context.projectName||'Bernried').slice(0,200);
-      $('source-note').textContent=String(context.note||'').slice(0,1000);
-      hubContext=true;
-      if(!$('editor').open)fillSourceOptions();
-      renderAll();
-    }catch(error){feedback('Quellen konnten nicht übernommen werden: '+error.message);}
+    try{sources=context.sources.map(M.source);$('project-name').textContent=String(context.projectName||'Bernried').slice(0,200);$('source-note').textContent=String(context.note||'').slice(0,1000);hubContext=true;if(!$('editor').open)fillSourceOptions();renderAll();}catch(error){feedback('Quellen konnten nicht übernommen werden: '+error.message);}
   }
-
-  function requestContext(){
-    if(window.parent!==window)window.parent.postMessage({type:'minds:request-context'},location.origin);
-  }
-
-  window.addEventListener('message',event=>{
-    if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='minds:context')return;
-    acceptContext(event.data);
-  });
-
+  function requestContext(){if(window.parent!==window)window.parent.postMessage({type:'minds:request-context'},location.origin);}
+  window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='minds:context')return;acceptContext(event.data);});
   $('refresh-sources').addEventListener('click',requestContext);
 
   async function migrateLocalOnce(){
@@ -918,42 +715,23 @@
     let localEntries=[],localMails=[];
     try{const raw=localStorage.getItem(M.KEY);if(raw)localEntries=M.parse(raw);}catch{}
     try{const raw=localStorage.getItem(M.MAIL_KEY);if(raw)localMails=M.parseMails(raw);}catch{}
-    if(!localEntries.length&&!localMails.length){
-      localStorage.setItem('minds_work_bernried_supabase_migrated_v1','1');
-      return;
-    }
-    const result=await S.migrateLocal(localEntries,localMails);
-    localStorage.setItem('minds_work_bernried_supabase_migrated_v1','1');
-    feedback('Lokale Pilotdaten migriert: '+result.entries+' Memory, '+result.mails+' Mails.');
+    if(!localEntries.length&&!localMails.length){localStorage.setItem('minds_work_bernried_supabase_migrated_v1','1');return;}
+    const result=await S.migrateLocal(localEntries,localMails);localStorage.setItem('minds_work_bernried_supabase_migrated_v1','1');feedback('Lokale Pilotdaten migriert: '+result.entries+' Memory, '+result.mails+' Mails.');
   }
 
   async function indexExistingMailOnce(){
     if(localStorage.getItem('minds_work_bernried_mail_indexed_v1')==='1')return;
-    for(const mail of mails){
-      if(mail.archived || !mail.body.trim())continue;
-      await S.indexMailText(mail);
-    }
+    for(const mail of mails){if(mail.archived||!mail.body.trim())continue;await S.indexMailText(mail);}
     localStorage.setItem('minds_work_bernried_mail_indexed_v1','1');
   }
 
   async function boot(){
     try{
-      setBusy(true);
-      await S.init();
-      await migrateLocalOnce();
-      await refresh();
-      await indexExistingMailOnce();
-      requestContext();
-      fetch('sources.json').then(r=>r.ok?r.json():null).then(context=>{
-        if(context&&!hubContext)acceptContext(context);
-      }).catch(()=>{});
-      const label=document.querySelector('.pilot-label');
-      label.replaceChildren(el('span',undefined,'dot'),document.createTextNode(' Pilot 0.4 · Planner Board + indexed memory'));
+      setBusy(true);await S.init();await migrateLocalOnce();await refresh();await indexExistingMailOnce();setupMailDrop();requestContext();
+      fetch('sources.json').then(r=>r.ok?r.json():null).then(context=>{if(context&&!hubContext)acceptContext(context);}).catch(()=>{});
+      const label=document.querySelector('.pilot-label');label.replaceChildren(el('span',undefined,'dot'),document.createTextNode(' Pilot 0.5 · Work memory'));
     }catch(error){
-      const box=el('div',undefined,'notice');
-      box.append(el('strong','MINDS konnte nicht geöffnet werden.'),document.createElement('br'),document.createTextNode(error.message));
-      $('feedback').replaceChildren();
-      document.querySelector('.workspace').replaceChildren(box);
+      const box=el('div',undefined,'notice');box.append(el('strong','MINDS konnte nicht geöffnet werden.'),document.createElement('br'),document.createTextNode(error.message));document.querySelector('.workspace').replaceChildren(box);
     }finally{setBusy(false);}
   }
 
