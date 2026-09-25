@@ -106,3 +106,90 @@ dialog{width:min(680px,calc(100% - 30px));max-height:90dvh;overflow:auto;border:
   .planner-group span{display:none}
   .planner-bucket{width:82vw;min-width:82vw}
 }
+
+/* v0.5 density + Planner details */
+.workspace{max-width:none;width:100%;margin:0;padding:18px 24px 42px}
+.masthead{min-height:66px}.masthead h1{font-size:30px}.masthead .eyebrow{margin-bottom:6px}
+.compact-notice{margin-top:10px;padding:9px 12px}
+.sections{margin-top:12px}.sections button{padding:12px 0}
+.screen{padding-top:18px}
+#screen-todos{padding-top:14px}
+.planner-head{margin-bottom:8px}.planner-head h2{font-size:23px}
+.planner-toolbar{padding-bottom:10px;margin-bottom:12px}
+.planner-board{min-height:calc(100dvh - 250px);gap:14px}
+.planner-bucket{width:300px;min-width:300px}.planner-add-bucket{min-width:255px}
+.planner-tools{gap:12px}.planner-filter select,.planner-group select{border:0;background:transparent;padding:4px 18px 4px 4px;color:#283029}
+.planner-group{font-size:11px}.planner-group strong{display:none}
+.task-chip.progress{background:#e8eef4;color:#395a73}
+.task-labels{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 8px 28px}.task-label{font-size:8px;padding:2px 6px;border-radius:8px;background:#e9ece8;color:#505950}
+.label-sage{background:#e2ede3;color:#38563f}.label-blue{background:#e1ebf5;color:#355a78}.label-violet{background:#ece4f4;color:#664f7b}.label-amber{background:#f6ecd7;color:#735d2c}.label-rose{background:#f5e4e4;color:#844747}.label-slate{background:#e8eaea;color:#4d5555}
+
+/* Mail ingestion */
+.mail-head{margin-bottom:14px}
+.mail-drop{display:flex;align-items:center;gap:14px;border:1px dashed #aeb8ad;background:#fbfcfa;padding:18px 20px;min-height:78px;margin-bottom:8px;transition:.15s ease;cursor:pointer}
+.mail-drop.drag-active{border-color:#365244;background:#edf3ed;box-shadow:inset 0 0 0 1px #365244}
+.drop-icon{font-size:25px;color:#526158;line-height:1}.mail-drop strong{font-size:13px;font-weight:600}.mail-drop p{margin:4px 0 0;font-size:10px;color:var(--muted)}
+.drop-browse{margin-left:auto!important;border:1px solid var(--line);background:#fff;padding:8px 11px!important;border-radius:3px;font-size:10px!important;color:#334038!important;cursor:pointer}.drop-browse input{display:none!important}
+.import-status{min-height:18px;font-size:10px;color:var(--muted);margin:5px 0 8px}
+
+/* Calendar */
+.planner-calendar{background:#fff;border:1px solid var(--line);min-height:620px}
+.calendar-head{display:flex;align-items:center;justify-content:center;gap:18px;padding:12px;border-bottom:1px solid var(--line)}
+.calendar-head h3{font-size:14px;font-weight:500;margin:0;min-width:170px;text-align:center}.calendar-head button{border:0;background:transparent;font-size:20px;padding:3px 8px}
+.calendar-weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.calendar-weekdays span{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:8px 9px;border-right:1px solid #eceeeb;border-bottom:1px solid var(--line)}
+.calendar-cell{min-height:108px;border-right:1px solid #eceeeb;border-bottom:1px solid #eceeeb;padding:7px}.calendar-cell.outside{background:#fafbf9}.calendar-cell.today{background:#f3f7f2}.calendar-day{font-size:10px;color:#69716a;margin-bottom:5px}
+.calendar-task{display:block;width:100%;border:0;border-left:2px solid #506359;background:#eef2ed;text-align:left;font-size:9px;padding:5px 6px;margin:3px 0;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Charts */
+.planner-charts{display:grid;grid-template-columns:repeat(3,minmax(260px,1fr));gap:18px}
+.chart-card{background:#fff;border:1px solid var(--line);padding:18px;min-height:280px}.chart-card h3{font-size:13px;font-weight:600;margin:0 0 20px}
+.chart-row{display:grid;grid-template-columns:110px 1fr 24px;align-items:center;gap:10px;margin:11px 0;font-size:10px}.chart-bar-wrap{height:8px;background:#eef0ed;border-radius:8px;overflow:hidden}.chart-bar{height:100%;background:#64776b;border-radius:8px}.chart-row strong{text-align:right}
+
+/* Planner task detail panel */
+.task-dialog{width:min(1160px,calc(100vw - 34px));height:min(860px,calc(100dvh - 28px));max-height:none;padding:0;border:1px solid #cfd3ce;border-radius:7px;overflow:hidden}
+.task-dialog::backdrop{background:#20282166}
+.task-shell{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 330px;margin:0}
+.task-detail-main{min-width:0;height:100%;overflow:auto;background:#fff;padding:24px 30px 18px}
+.task-chat{border-left:1px solid var(--line);display:flex;flex-direction:column;background:#fbfbfa;min-width:0;height:100%}
+.task-chat>h3{font-size:13px;margin:0;padding:24px 18px 14px;border-bottom:1px solid var(--line)}
+.task-detail-head{display:grid;grid-template-columns:25px minmax(0,1fr) auto;gap:12px;align-items:start;padding-bottom:8px}
+.detail-complete{width:20px;height:20px;padding:0;border:1px solid #626b64;border-radius:50%;margin-top:5px;background:#fff;color:#fff}.detail-complete.is-complete{background:#3e5547;border-color:#3e5547}
+.detail-title{width:100%;border:0!important;padding:0!important;font-size:19px!important;font-weight:600;background:transparent!important;line-height:1.35}.detail-title:focus{outline:0}
+.detail-meta{font-size:9px;color:var(--muted);margin:7px 0 0}
+.task-head-actions{display:flex;gap:3px}.task-head-actions button{border:0;background:transparent;padding:5px 7px;font-size:16px;color:#606861}
+.task-label-row,.task-assign-row{display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;align-items:center;padding:7px 0}
+.detail-icon{font-size:15px;color:#616963;text-align:center}.task-label-row input,.task-assign-row input{border:0;border-bottom:1px solid transparent;padding:7px 4px;font-size:11px;background:transparent}.task-label-row input:focus,.task-assign-row input:focus{border-bottom-color:var(--line);outline:0}
+.task-tabs{display:flex;gap:8px;margin:16px 0 18px}.task-tabs button{border:0;background:#f2f3f1;border-radius:18px;padding:8px 12px;font-size:10px}.task-tabs button[aria-pressed=true]{background:#e8e6ff;color:#4f47b7;font-weight:600}
+.task-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px 20px}.task-fields-grid label{margin:0!important;font-size:10px;color:#4f5750}.task-fields-grid input,.task-fields-grid select{margin-top:5px!important;padding:9px 10px!important;border:1px solid #c8cec6!important;border-radius:5px!important}
+.task-section{margin-top:22px}.task-section h3{font-size:12px;font-weight:600;margin:0 0 10px}.task-section-head{display:flex;justify-content:space-between;align-items:center}.show-card{display:flex!important;align-items:center;gap:6px;margin:0!important;font-size:9px!important;color:#576058}.show-card input{width:auto!important;margin:0!important}
+.task-section textarea{width:100%;border:1px solid transparent;background:#fafbf9;padding:10px;font-size:11px;line-height:1.55;min-height:110px}.task-section textarea:focus{border-color:#c9cec7;outline:0;background:#fff}
+.task-checklist{display:grid;gap:6px}.checklist-row{display:grid;grid-template-columns:18px 1fr 24px;gap:7px;align-items:center}.checklist-row input[type=checkbox]{width:15px;height:15px}.checklist-row input[type=text]{border:0;border-bottom:1px solid #e3e6e2;padding:6px 2px;font-size:11px}.checklist-row input[type=text]:focus{outline:0;border-bottom-color:#808981}.checklist-remove{border:0;background:transparent;padding:2px;font-size:15px;color:#8a918a}
+.detail-add{border:0;background:transparent;padding:8px 0;font-size:10px;color:#69726a}
+.task-source-strip{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:20px;padding-top:14px;border-top:1px solid #eceeeb}.task-source-strip label{font-size:9px!important;color:var(--muted);margin:0!important}.task-source-strip select,.task-source-strip input{margin-top:5px!important;padding:8px!important}
+.task-detail-footer{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:12px;border-top:1px solid #eceeeb}.task-detail-footer span{font-size:9px;color:var(--muted)}
+.task-comments{flex:1;overflow:auto;padding:14px 16px}.comment-empty{display:grid;place-items:center;height:100%;min-height:250px;color:#8a918a;font-size:10px;text-align:center}.task-comment{background:#fff;border:1px solid #e0e3df;border-radius:5px;padding:10px;margin-bottom:8px}.task-comment p{font-size:10px;line-height:1.45;margin:4px 0 0;white-space:pre-wrap}.comment-meta{font-size:8px;color:#8a918a}
+.task-comment-box{border-top:1px solid var(--line);padding:12px;display:grid;grid-template-columns:1fr 32px;gap:7px}.task-comment-box textarea{resize:none;border:1px solid #d6dad5;border-radius:5px;padding:9px;font-size:10px}.task-comment-box button{align-self:end;padding:7px;border:0;background:transparent;font-size:16px}
+.task-file-list{display:grid;gap:7px;margin-bottom:12px}.task-file-row{display:flex;justify-content:space-between;align-items:center;border:1px solid #e0e3df;padding:9px 10px;border-radius:4px;font-size:9px}.task-file-open{border:0;background:transparent;padding:0;text-align:left;font-size:10px}.attachment-drop{display:block!important;border:1px dashed #bec5bd;padding:14px!important;text-align:center;font-size:10px!important;cursor:pointer}.attachment-drop input{display:none!important}.link-add{display:grid;grid-template-columns:1fr 150px auto;gap:7px;margin-top:10px}.link-add input{border:1px solid #d2d7d0;padding:8px;font-size:10px}.link-add button{padding:8px 10px;font-size:10px}
+
+/* Keep generic dialogs smaller */
+#editor,#mail-editor,#bucket-editor{height:auto}
+#editor{width:min(660px,calc(100% - 30px))}
+
+/* Full-width board on large screens */
+@media(min-width:1500px){
+  .workspace{padding-left:28px;padding-right:28px}
+  .planner-bucket{width:310px;min-width:310px}
+}
+@media(max-width:1000px){
+  .planner-charts{grid-template-columns:1fr}
+  .task-dialog{width:calc(100vw - 16px);height:calc(100dvh - 16px)}
+  .task-shell{grid-template-columns:1fr}.task-chat{display:none}
+}
+@media(max-width:700px){
+  .workspace{padding:14px 12px 35px}.masthead{min-height:54px}
+  .compact-notice{font-size:10px}.planner-tools{align-items:flex-start}
+  .task-detail-main{padding:18px 16px}.task-fields-grid,.task-source-strip{grid-template-columns:1fr}
+  .calendar-cell{min-height:82px}.calendar-task{font-size:8px}
+  .mail-drop{align-items:flex-start}.drop-browse{margin-left:0!important}
+}
