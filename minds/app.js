@@ -262,6 +262,14 @@
       {id:'urgent',label:'Dringend',kind:'priority'},{id:'important',label:'Wichtig',kind:'priority'},
       {id:'medium',label:'Mittel',kind:'priority'},{id:'low',label:'Niedrig',kind:'priority'}
     ];
+    if(mode==='owner'){
+      const owners=[...new Set(activeTasks().map(x=>x.owner.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'));
+      return [...owners.map(name=>({id:name,label:name,kind:'owner'})),{id:'__none',label:'Nicht zugewiesen',kind:'owner'}];
+    }
+    if(mode==='label'){
+      const names=[...new Set(activeTasks().flatMap(x=>(x.labels||[]).map(l=>l.name)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'));
+      return [...names.map(name=>({id:name,label:name,kind:'label'})),{id:'__none',label:'Ohne Bezeichnung',kind:'label'}];
+    }
     return [
       {id:'overdue',label:'Überfällig',kind:'due'},{id:'today',label:'Heute',kind:'due'},
       {id:'week',label:'Nächste 7 Tage',kind:'due'},{id:'later',label:'Später',kind:'due'},{id:'none',label:'Ohne Termin',kind:'due'}
@@ -272,6 +280,8 @@
     if(group.kind==='bucket')return item.bucketId===group.id;
     if(group.kind==='state')return item.state===group.id;
     if(group.kind==='priority')return item.priority===group.id;
+    if(group.kind==='owner')return group.id==='__none'?!item.owner.trim():item.owner.trim()===group.id;
+    if(group.kind==='label')return group.id==='__none'?!(item.labels||[]).length:(item.labels||[]).some(label=>label.name===group.id);
     return dueGroup(item)===group.id;
   }
 
@@ -344,6 +354,8 @@
       const overrides={};
       if(group.kind==='state')overrides.state=group.id;
       if(group.kind==='priority')overrides.priority=group.id;
+      if(group.kind==='owner'&&group.id!=='__none')overrides.owner=group.id;
+      if(group.kind==='label'&&group.id!=='__none')overrides.labels=[{id:crypto.randomUUID(),name:group.id,color:'sage'}];
       if(group.kind==='due'&&group.id==='today')overrides.due=today();
       createTaskFast(title,bucketId,overrides).catch(()=>{});
     });
@@ -370,6 +382,12 @@
       return saveEntry({...item,state:group.id,updatedAt:new Date().toISOString()},'Status geändert.');
     }
     if(group.kind==='priority')return saveEntry({...item,priority:group.id,updatedAt:new Date().toISOString()},'Priorität geändert.');
+    if(group.kind==='owner')return saveEntry({...item,owner:group.id==='__none'?'':group.id,updatedAt:new Date().toISOString()},'Zuweisung geändert.');
+    if(group.kind==='label'){
+      const labelsNow=[...(item.labels||[])];
+      const next=group.id==='__none'?[]:(labelsNow.some(x=>x.name===group.id)?labelsNow:[...labelsNow,{id:crypto.randomUUID(),name:group.id,color:labelColors[labelsNow.length%labelColors.length]}]);
+      return saveEntry({...item,labels:next,updatedAt:new Date().toISOString()},'Bezeichnung geändert.');
+    }
     if(group.kind==='due'){
       let due=item.due;
       if(group.id==='none')due='';
