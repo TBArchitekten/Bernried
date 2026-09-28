@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>2401 Bernried · Project Hub</title>
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body>
+  <section class="auth-gate" id="authGate">
+    <div class="auth-card">
+      <div class="auth-brand">Titus Bernhard <strong>Architekten</strong></div>
+
+      <div id="roleLogin">
+        <h1>Bernried</h1>
+        <p>Projektzugang · Entwurfsplanung LPH 3</p>
+        <div class="role-grid" aria-label="Zugangsgruppe">
+          <button type="button" data-login-role="tba">Titus Bernhard Architekten</button>
+          <button type="button" data-login-role="bauherren">Bauherren</button>
+          <button type="button" data-login-role="fachplaner">Fachplaner</button>
+        </div>
+        <form id="roleLoginForm">
+          <label for="rolePassword">Passwort</label>
+          <input id="rolePassword" type="password" autocomplete="current-password" required>
+          <div class="auth-actions">
+            <button class="text-button" id="showBootstrapLogin" type="button">Projektzugänge einrichten</button>
+            <button class="primary" type="submit">Anmelden</button>
+          </div>
+        </form>
+        <div class="auth-message" id="authMessage" aria-live="polite"></div>
+      </div>
+
+      <div class="hidden" id="bootstrapLogin">
+        <h1>Projektzugänge einrichten</h1>
+        <p>Einmalige Einrichtung über den bestehenden Bernried-Adminzugang.</p>
+        <form id="bootstrapLoginForm">
+          <label for="bootstrapEmail">Bestehende Admin-E-Mail</label>
+          <input id="bootstrapEmail" type="email" autocomplete="username" required>
+          <label for="bootstrapPassword">Passwort</label>
+          <input id="bootstrapPassword" type="password" autocomplete="current-password" required>
+          <div class="auth-actions">
+            <button class="text-button" id="backToRoleLogin" type="button">Zurück</button>
+            <button class="primary" type="submit">Admin anmelden</button>
+          </div>
+        </form>
+
+        <div class="hidden bootstrap" id="provisionPanel">
+          <p id="bootstrapStatus"></p>
+          <button class="primary" id="provisionAccess" type="button">Drei Projektzugänge erstellen / Passwörter neu setzen</button>
+          <div class="credentials hidden" id="credentialsBox">
+            <p><strong>Passwörter jetzt sicher notieren.</strong> Sie werden danach nicht mehr im Klartext angezeigt.</p>
+            <div id="credentialsList"></div>
+            <p id="migrationStatus"></p>
+            <div class="credential-print-actions">
+              <button class="secondary" id="printExternalCredentials" type="button">Bauherren + Fachplaner drucken</button>
+              <button class="primary" id="bootstrapDone" type="button">Fertig · mit Projektzugang anmelden</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="app-shell hidden" id="appShell">
+    <header class="site-header">
+      <div class="brand">Titus Bernhard <strong>Architekten</strong></div>
+      <button class="project-name" id="projectName" title="Startseite">Bernried · Museum der Komischen Kunst</button>
+      <nav class="site-nav" aria-label="Projekt-Navigation">
+        <button data-view="grundrisse">Grundrisse</button>
+        <button data-view="schnitte">Schnitte und Ansichten</button>
+        <button data-view="modell">3D Modell</button>
+        <button data-view="terminplan">Terminplan</button>
+        <button data-view="timeline">Timeline</button>
+        <button data-view="images">Images</button>
+        <button data-view="kontakt">Kontakt</button>
+      </nav>
+    </header>
+
+    <div class="user-menu">
+      <span class="role-badge" id="roleBadge"></span>
+      <span id="roleMode"></span>
+      <button id="logout" type="button">Abmelden</button>
+    </div>
+
+    <main>
+      <section class="view active" id="view-landing">
+        <div class="editor-only admin-bar">
+          <input id="projectNameInput" type="text" maxlength="240" aria-label="Projektname">
+          <button id="saveProjectName" type="button">Projektname speichern</button>
+          <label>Landing-Bild <input id="landingFile" type="file" accept="image/*"></label>
+        </div>
+        <div class="landing-view"><img id="landingImage" alt="Bernried · Projekt"></div>
+      </section>
+
+      <section class="view" id="view-grundrisse">
+        <div class="content">
+          <div class="section-head">
+            <h1>Grundrisse</h1>
+            <div class="editor-only section-actions">
+              <button id="addStand-grundrisse" type="button">+ Stand</button>
+              <button id="editStand-grundrisse" type="button">Stand bearbeiten</button>
+              <button id="addDoc-grundrisse" type="button">+ Dokument</button>
+            </div>
+          </div>
+          <div class="stand-bar">
+            <label class="stand-select-wrap">Stand
+              <select class="stand-select" id="standSelect-grundrisse"></select>
+            </label>
+            <div class="stand-note" id="standNote-grundrisse"></div>
+          </div>
+          <div class="doc-grid" id="grid-grundrisse"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-schnitte">
+        <div class="content">
+          <div class="section-head">
+            <h1>Schnitte und Ansichten</h1>
+            <div class="editor-only section-actions">
+              <button id="addStand-schnitte" type="button">+ Stand</button>
+              <button id="editStand-schnitte" type="button">Stand bearbeiten</button>
+              <button id="addDoc-schnitte" type="button">+ Dokument</button>
+            </div>
+          </div>
+          <div class="stand-bar">
+            <label class="stand-select-wrap">Stand
+              <select class="stand-select" id="standSelect-schnitte"></select>
+            </label>
+            <div class="stand-note" id="standNote-schnitte"></div>
+          </div>
+          <div class="doc-grid" id="grid-schnitte"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-modell">
+        <div class="editor-only admin-bar">
+          <input id="modelUrlInput" type="url" placeholder="D5-Link" aria-label="D5-Link">
+          <button id="saveModelUrl" type="button">3D-Link speichern</button>
+        </div>
+        <div class="model-view"><iframe class="model-frame" id="modelFrame" title="3D Modell" allow="fullscreen" allowfullscreen></iframe></div>
+      </section>
+
+      <section class="view" id="view-terminplan">
+        <div class="editor-only admin-bar">
+          <label>Terminplan ersetzen <input id="scheduleFile" type="file" accept=".html,.htm,.pdf"></label>
+        </div>
+        <div class="schedule-view">
+          <div class="empty hidden" id="scheduleEmpty">Noch kein Terminplan hinterlegt.</div>
+          <iframe class="schedule-frame" id="scheduleFrame" title="Planungsterminplan LPH 3"></iframe>
+        </div>
+      </section>
+
+      <section class="view" id="view-timeline">
+        <div class="content">
+          <div class="section-head">
+            <div>
+              <h1>Timeline</h1>
+              <div class="doc-meta">Entwurfsplanung · nachvollziehbarer Projektverlauf</div>
+            </div>
+            <div class="editor-only section-actions">
+              <button id="addTimeline" type="button">+ Ereignis</button>
+            </div>
+          </div>
+          <div class="timeline" id="timelineList"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-images">
+        <div class="content">
+          <div class="section-head">
+            <h1>Images</h1>
+            <div class="editor-only section-actions">
+              <label>+ Image <input id="imageFile" type="file" accept="image/*"></label>
+            </div>
+          </div>
+          <div class="images-grid" id="imagesGrid"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-kontakt">
+        <div class="content">
+          <div class="section-head">
+            <h1 class="contact-title">KONTAKT</h1>
+            <div class="editor-only section-actions">
+              <button id="editContact" type="button">Bearbeiten</button>
+              <button id="saveContact" type="button">Speichern</button>
+            </div>
+          </div>
+          <div class="contact-wrap"><div id="contactData"></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="dialog" id="standDialog">
+    <form id="standForm">
+      <div class="dialog-head"><h2 id="standDialogTitle">Stand</h2><button id="closeStandDialog" type="button" aria-label="Schließen">×</button></div>
+      <input id="standId" type="hidden">
+      <label>Kategorie<select id="standCategory"><option value="grundrisse">Grundrisse</option><option value="schnitte_ansichten">Schnitte und Ansichten</option></select></label>
+      <div class="form-row">
+        <label>Bezeichnung<input id="standLabel" required maxlength="160" placeholder="z. B. Stand 01"></label>
+        <label>Datum<input id="standDate" type="date"></label>
+      </div>
+      <label>Hinweis<textarea id="standNote" rows="3" maxlength="2000" placeholder="Optionaler Hinweis zu diesem Stand"></textarea></label>
+      <label class="check-row"><input id="standCurrent" type="checkbox"> Als aktuellen Stand markieren</label>
+      <div class="dialog-message" id="standError"></div>
+      <div class="dialog-actions"><button class="primary" type="submit">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog" id="documentDialog">
+    <form id="documentForm">
+      <div class="dialog-head"><h2 id="docDialogTitle">Dokument</h2><button id="closeDocumentDialog" type="button" aria-label="Schließen">×</button></div>
+      <input id="docId" type="hidden">
+      <label>Kategorie<select id="docCategory"><option value="grundrisse">Grundrisse</option><option value="schnitte_ansichten">Schnitte und Ansichten</option></select></label>
+      <label>Stand<select id="docStand"></select></label>
+      <label>Titel<input id="docTitle" maxlength="240"></label>
+      <label>Meta / Planbezeichnung<input id="docMeta" maxlength="2000" placeholder="z. B. M 1:100 · Arbeitsstand"></label>
+      <div class="form-row">
+        <label>PDF<input id="docPdf" type="file" accept=".pdf,application/pdf"></label>
+        <label>Vorschau (optional)<input id="docThumb" type="file" accept="image/*"></label>
+      </div>
+      <div class="dialog-message" id="docError"></div>
+      <div class="dialog-actions"><button class="primary" type="submit">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog" id="timelineDialog">
+    <form id="timelineForm">
+      <div class="dialog-head"><h2 id="timelineDialogTitle">Timeline-Ereignis</h2><button id="closeTimelineDialog" type="button" aria-label="Schließen">×</button></div>
+      <input id="timelineId" type="hidden">
+      <div class="form-row">
+        <label>Datum<input id="timelineDate" type="date" required></label>
+        <label>Kategorie<select id="timelineCategory">
+          <option value="planstand">Planstand</option>
+          <option value="versand">Versand</option>
+          <option value="besprechung">Besprechung</option>
+          <option value="eingang">Eingang</option>
+          <option value="entscheidung">Entscheidung</option>
+          <option value="other">Sonstiges</option>
+        </select></label>
+      </div>
+      <label>Titel<input id="timelineTitle" required maxlength="240"></label>
+      <label>Beschreibung<textarea id="timelineDescription" rows="5" maxlength="12000"></textarea></label>
+      <label>Bereits vorhandene Pläne / Dokumente</label>
+      <div class="check-list" id="timelineDocuments"></div>
+      <label>Weitere Dateien<input id="timelineFilesInput" type="file" multiple></label>
+      <div class="dialog-message" id="timelineError"></div>
+      <div class="dialog-actions"><button class="primary" type="submit">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <div class="modal" id="viewerModal">
+    <div class="modal-head">
+      <div class="modal-title" id="viewerTitle"></div>
+      <button id="viewerNewWindow" type="button">In neuem Fenster öffnen</button>
+      <button id="viewerClose" type="button">Schließen</button>
+    </div>
+    <div class="modal-body" id="viewerBody"></div>
+  </div>
+
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="portal.js"></script>
+</body>
+</html>
