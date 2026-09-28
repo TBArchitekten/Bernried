@@ -47,11 +47,14 @@
 
         <div class="hidden bootstrap" id="provisionPanel">
           <p id="bootstrapStatus"></p>
-          <button class="primary" id="provisionAccess" type="button">Drei Projektzugänge erstellen / Passwörter neu setzen</button>
+          <div class="bootstrap-actions">
+            <button class="secondary" id="migrateLegacyOnly" type="button">Bisherige Projektdateien nach Supabase migrieren</button>
+            <button class="primary" id="provisionAccess" type="button">Drei Projektzugänge erstellen / Passwörter neu setzen</button>
+          </div>
+          <p id="migrationStatus"></p>
           <div class="credentials hidden" id="credentialsBox">
             <p><strong>Passwörter jetzt sicher notieren.</strong> Sie werden danach nicht mehr im Klartext angezeigt.</p>
             <div id="credentialsList"></div>
-            <p id="migrationStatus"></p>
             <div class="credential-print-actions">
               <button class="secondary" id="printExternalCredentials" type="button">Bauherren + Fachplaner drucken</button>
               <button class="primary" id="bootstrapDone" type="button">Fertig · mit Projektzugang anmelden</button>
