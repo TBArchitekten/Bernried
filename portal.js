@@ -174,22 +174,6 @@ function printCredentials(credentials){
   setTimeout(()=>{popup.focus();popup.print()},250);
 }
 
-async function migrateLegacyAssets(){
-  $('migrationStatus').textContent='Projektdateien werden nach Supabase migriert …';
-  $('migrateLegacyOnly').disabled=true;
-  try{
-    const {data,error}=await sb.functions.invoke('bernried-migrate-legacy-assets',{body:{}});
-    if(error)throw error;
-    if(data?.error)throw new Error(data.error);
-    $('migrationStatus').textContent='Projektdateien wurden in den privaten Supabase-Speicher übernommen.';
-    await loadAll();
-  }catch(error){
-    $('migrationStatus').textContent='Migration fehlgeschlagen: '+(error.message||error);
-  }finally{
-    $('migrateLegacyOnly').disabled=false;
-  }
-}
-
 async function provisionAccess(){
   $('bootstrapStatus').textContent='Zugänge werden erstellt …';
   $('provisionAccess').disabled=true;
@@ -214,14 +198,6 @@ async function provisionAccess(){
     }
     $('credentialsBox').classList.remove('hidden');
     $('bootstrapStatus').textContent='Zugänge erstellt. Die Passwörter werden nur jetzt im Klartext angezeigt. Supabase Auth speichert sie anschließend ausschließlich gehasht.';
-
-    try{
-      const migrated=await sb.functions.invoke('bernried-migrate-legacy-assets',{body:{}});
-      if(migrated.error)throw migrated.error;
-      $('migrationStatus').textContent='Bisherige Projektdateien wurden in den privaten Supabase-Speicher übernommen.';
-    }catch(error){
-      $('migrationStatus').textContent='Die Zugänge sind erstellt; die automatische Dateimigration muss noch einmal gestartet werden: '+(error.message||error);
-    }
   }catch(error){
     $('bootstrapStatus').textContent=error.message||'Einrichtung fehlgeschlagen.';
   }finally{$('provisionAccess').disabled=false}
@@ -550,7 +526,6 @@ function bind(){
     if(error){$('bootstrapStatus').textContent=error.message;return}
     await routeSession(data.session);
   };
-  $('migrateLegacyOnly').onclick=migrateLegacyAssets;
   $('provisionAccess').onclick=provisionAccess;
   $('printExternalCredentials').onclick=()=>printCredentials(provisionedCredentials);
   $('bootstrapDone').onclick=async()=>{await sb.auth.signOut();showAuth('roles');setRole('tba')};
