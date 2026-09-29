@@ -26,5 +26,8 @@
 
 .plan-actions{margin-left:auto;flex:none}
 
-.pdf-preview-canvas{display:block;width:100%;height:100%;object-fit:contain;background:#fff}
+
+
+.pdf-native-preview{display:block;width:100%;height:100%;border:0;background:#fff;pointer-events:none}
 .thumb-loading{font-size:10px;color:var(--muted)}
+.thumb-wrap.preview-ready{background:#fff}

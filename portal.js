@@ -26,18 +26,6 @@ let provisionedCredentials=[];
 let selectedRole='tba';
 const selectedStand={plaene:null};
 const signedCache=new Map();
-let pdfJsPromise=null;
-
-async function pdfJs(){
-  if(!pdfJsPromise){
-    pdfJsPromise=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(mod=>{
-      mod.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-      return mod;
-    });
-  }
-  return pdfJsPromise;
-}
-
 function adminMode(){return new URLSearchParams(location.search).get('admin')==='1'}
 function safe(value){return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function cleanName(name){return String(name||'file').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180)}
@@ -296,31 +284,16 @@ function documentCard(doc){
 async function renderPdfPreview(host,doc){
   host.innerHTML='<span class="thumb-placeholder thumb-loading">Vorschau wird geladen …</span>';
   try{
-    const pdfjs=await pdfJs();
     const url=await signedUrl(doc.file_path);
-    const loading=pdfjs.getDocument({
-      url,
-      cMapPacked:true,
-      disableAutoFetch:true,
-      disableStream:false
-    });
-    const pdf=await loading.promise;
-    const page=await pdf.getPage(1);
-    const base=page.getViewport({scale:1});
-    const cssWidth=Math.max(host.clientWidth||720,320);
-    const pixelRatio=Math.min(window.devicePixelRatio||1,2);
-    const targetWidth=Math.min(cssWidth*pixelRatio,1800);
-    const scale=targetWidth/base.width;
-    const viewport=page.getViewport({scale});
-    const canvas=document.createElement('canvas');
-    canvas.className='pdf-preview-canvas';
-    canvas.width=Math.ceil(viewport.width);
-    canvas.height=Math.ceil(viewport.height);
-    canvas.setAttribute('aria-label',doc.title);
-    const ctx=canvas.getContext('2d',{alpha:false});
-    await page.render({canvasContext:ctx,viewport}).promise;
-    host.replaceChildren(canvas);
-    await pdf.destroy();
+    const frame=document.createElement('iframe');
+    frame.className='pdf-native-preview';
+    frame.title='Vorschau '+doc.title;
+    frame.loading='lazy';
+    frame.tabIndex=-1;
+    frame.setAttribute('aria-hidden','true');
+    frame.src=url+'#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0';
+    frame.addEventListener('load',()=>host.classList.add('preview-ready'),{once:true});
+    host.replaceChildren(frame);
   }catch(error){
     console.error('PDF preview failed',doc.title,error);
     host.innerHTML='<span class="thumb-placeholder">PDF</span>';
