@@ -379,6 +379,15 @@ async function renderSchedule(){
     const response=await fetch(url,{cache:'no-store'});
     if(!response.ok)throw new Error('Terminplan konnte nicht geladen werden.');
     let html=await response.text();
+    const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+    if(sessionError||!sessionData.session)throw sessionError||new Error('Keine gültige Projektsitzung.');
+    html=html.replace(
+      'const EMBED_SESSION=null;',
+      'const EMBED_SESSION='+JSON.stringify({
+        access_token:sessionData.session.access_token,
+        refresh_token:sessionData.session.refresh_token
+      })+';'
+    );
 
     // Keep the original interactive Terminplan, but make viewer accounts read-only.
     if(!isEditor()){
@@ -653,7 +662,10 @@ async function boot(){
   const {data,error}=await sb.auth.getSession();
   if(error){showAuth('roles');return}
   await routeSession(data.session);
-  sb.auth.onAuthStateChange((_event,next)=>setTimeout(()=>routeSession(next).catch(err=>{console.error(err);showAuth('roles')}),0));
+  sb.auth.onAuthStateChange((event,next)=>{
+    if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED')return;
+    setTimeout(()=>routeSession(next).catch(err=>{console.error(err);showAuth('roles')}),0);
+  });
 }
 
 boot().catch(error=>{console.error(error);showAuth('roles');$('authMessage').textContent=error.message||'Start fehlgeschlagen.'});
