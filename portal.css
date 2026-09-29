@@ -25,3 +25,6 @@
 #view-terminplan > .admin-bar{display:none!important}
 
 .plan-actions{margin-left:auto;flex:none}
+
+.pdf-preview-canvas{display:block;width:100%;height:100%;object-fit:contain;background:#fff}
+.thumb-loading{font-size:10px;color:var(--muted)}
