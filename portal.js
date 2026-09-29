@@ -26,6 +26,110 @@ let provisionedCredentials=[];
 let selectedRole='tba';
 const selectedStand={plaene:null};
 const signedCache=new Map();
+let thumbnailPdfJsPromise=null;
+const thumbnailJobs=new Map();
+let thumbnailWorkers=0;
+const thumbnailQueue=[];
+const MAX_THUMBNAIL_WORKERS=2;
+
+async function thumbnailPdfJs(){
+  if(!thumbnailPdfJsPromise){
+    thumbnailPdfJsPromise=Promise.race([
+      import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(mod=>{
+        mod.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+        return mod;
+      }),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('PDF preview engine timeout')),12000))
+    ]);
+  }
+  return thumbnailPdfJsPromise;
+}
+
+function canvasBlob(canvas,type='image/jpeg',quality=.82){
+  return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Thumbnail conversion failed')),type,quality));
+}
+
+async function thumbnailFromPdfBytes(bytes){
+  const pdfjs=await thumbnailPdfJs();
+  const pdf=await pdfjs.getDocument({data:new Uint8Array(bytes),disableAutoFetch:true,disableStream:true}).promise;
+  const page=await pdf.getPage(1);
+  const base=page.getViewport({scale:1});
+  const targetWidth=1200;
+  const viewport=page.getViewport({scale:targetWidth/base.width});
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.ceil(viewport.width);
+  canvas.height=Math.ceil(viewport.height);
+  const ctx=canvas.getContext('2d',{alpha:false});
+  await page.render({canvasContext:ctx,viewport}).promise;
+  const blob=await canvasBlob(canvas);
+  await pdf.destroy();
+  return blob;
+}
+
+async function persistPlanThumbnail(doc,blob){
+  const path=`${PROJECT_SLUG}/documents/plaene/previews/${doc.id}.jpg`;
+  const uploadResult=await sb.storage.from(BUCKET).upload(path,blob,{contentType:'image/jpeg',upsert:true});
+  if(uploadResult.error)throw uploadResult.error;
+  const updateResult=await sb.from('documents').update({thumbnail_path:path}).eq('id',doc.id);
+  if(updateResult.error)throw updateResult.error;
+  doc.thumbnail_path=path;
+  signedCache.delete(path+'|');
+  return path;
+}
+
+function enqueueThumbnail(doc,host,bytes=null){
+  if(!isEditor()||doc.thumbnail_path)return;
+  if(thumbnailJobs.has(doc.id)){
+    thumbnailJobs.get(doc.id).hosts.add(host);
+    return;
+  }
+  const job={doc,hosts:new Set([host]),bytes};
+  thumbnailJobs.set(doc.id,job);
+  thumbnailQueue.push(job);
+  runThumbnailQueue();
+}
+
+function runThumbnailQueue(){
+  while(thumbnailWorkers<MAX_THUMBNAIL_WORKERS&&thumbnailQueue.length){
+    const job=thumbnailQueue.shift();
+    thumbnailWorkers++;
+    generateAndPersistThumbnail(job).finally(()=>{
+      thumbnailWorkers--;
+      thumbnailJobs.delete(job.doc.id);
+      runThumbnailQueue();
+    });
+  }
+}
+
+async function generateAndPersistThumbnail(job){
+  const {doc,hosts}=job;
+  try{
+    let bytes=job.bytes;
+    if(!bytes){
+      const url=await signedUrl(doc.file_path);
+      const response=await fetch(url,{cache:'no-store'});
+      if(!response.ok)throw new Error('PDF konnte nicht für Vorschau geladen werden.');
+      bytes=await response.arrayBuffer();
+    }
+    const blob=await thumbnailFromPdfBytes(bytes);
+    await persistPlanThumbnail(doc,blob);
+    const objectUrl=URL.createObjectURL(blob);
+    for(const host of hosts){
+      if(!host.isConnected)continue;
+      const img=document.createElement('img');
+      img.alt=doc.title;
+      img.src=objectUrl;
+      host.replaceChildren(img);
+      host.classList.add('preview-ready');
+    }
+    setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+  }catch(error){
+    console.error('Thumbnail generation failed',doc.title,error);
+    for(const host of hosts){
+      if(host.isConnected)renderNativePdfPreview(host,doc);
+    }
+  }
+}
 function adminMode(){return new URLSearchParams(location.search).get('admin')==='1'}
 function safe(value){return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function cleanName(name){return String(name||'file').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180)}
@@ -264,9 +368,13 @@ function documentCard(doc){
   const card=document.createElement('article');card.className='doc-card';
   const thumb=document.createElement('div');thumb.className='thumb-wrap';
   if(doc.thumbnail_path){
-    const img=document.createElement('img');img.alt=doc.title;thumb.append(img);signedUrl(doc.thumbnail_path).then(url=>img.src=url).catch(()=>renderPdfPreview(thumb,doc));
+    const img=document.createElement('img');img.alt=doc.title;thumb.append(img);
+    signedUrl(doc.thumbnail_path).then(url=>img.src=url).catch(()=>renderNativePdfPreview(thumb,doc));
+  }else if(isEditor()){
+    thumb.innerHTML='<span class="thumb-placeholder thumb-loading">Vorschau wird einmalig erstellt …</span>';
+    enqueueThumbnail(doc,thumb);
   }else{
-    renderPdfPreview(thumb,doc);
+    renderNativePdfPreview(thumb,doc);
   }
   const info=document.createElement('div');info.className='doc-info';
   const left=document.createElement('div');left.innerHTML=`<h2>${safe(doc.title)}</h2><div class="doc-meta">${safe(doc.meta||'')}</div>`;
@@ -281,7 +389,7 @@ function documentCard(doc){
   }
   info.append(left,actions);card.append(thumb,info);thumb.onclick=()=>openDocument(doc);return card;
 }
-async function renderPdfPreview(host,doc){
+async function renderNativePdfPreview(host,doc){
   host.innerHTML='<span class="thumb-placeholder thumb-loading">Vorschau wird geladen …</span>';
   try{
     const url=await signedUrl(doc.file_path);
@@ -328,8 +436,15 @@ async function uploadPlanFiles(files){
     const index=active.label||'';
     const meta=[number,index?`Index ${index}`:'',active.stand_date?`Stand ${formatDate(active.stand_date)}`:''].filter(Boolean).join(' · ');
     const payload={project_id:project.id,category:'plaene',title:planTitleFromFilename(file.name),meta,file_path:path,thumbnail_path:null,stand_id:active.id,sort_order:order++,is_published:true,document_kind:'plan',document_date:active.stand_date||null};
-    const {error}=await sb.from('documents').insert(payload);
-    if(error){await removePath(path);throw error}
+    const result=await sb.from('documents').insert(payload).select('*').single();
+    if(result.error){await removePath(path);throw result.error}
+    try{
+      const bytes=await file.arrayBuffer();
+      const blob=await thumbnailFromPdfBytes(bytes);
+      await persistPlanThumbnail(result.data,blob);
+    }catch(error){
+      console.warn('Thumbnail wird später erzeugt.',file.name,error);
+    }
   }
   await loadAll();toast(`${pdfs.length} Pläne hochgeladen.`);
 }
