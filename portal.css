@@ -12,3 +12,12 @@
 @media(max-width:800px){.auth-card{padding:24px}.role-grid{grid-template-columns:1fr}.site-header{display:flex;flex-direction:column;align-items:flex-start}.project-name{font-size:15px}.site-nav{gap:16px}.content{padding:32px 18px 65px}.doc-grid,.images-grid{grid-template-columns:1fr}.stand-bar,.section-head{align-items:flex-start;flex-direction:column}.timeline-item{grid-template-columns:76px 14px minmax(0,1fr);gap:10px}.timeline-item:before{left:82px}.timeline-date{font-size:10px}.form-row{grid-template-columns:1fr}.user-menu{right:10px;bottom:10px}}
 
 .bootstrap-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}.bootstrap-actions .primary,.bootstrap-actions .secondary{font-size:10px}
+
+.auth-actions-end{justify-content:flex-end}
+.file-action{border:1px solid var(--line);background:#fff;padding:8px 10px;font-size:11px;cursor:pointer}
+.file-action input{display:none}
+.document-list{border-top:1px solid #111}
+.general-document{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+.general-document h2{font-size:16px;font-weight:400;margin:0 0 5px}
+.general-document .doc-actions{align-items:center}
+@media(max-width:800px){.general-document{grid-template-columns:1fr;gap:10px}}

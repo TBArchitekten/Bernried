@@ -11,8 +11,8 @@ const ROLE_EMAILS={
   bauherren:'bauherren.bernried@access.invalid',
   fachplaner:'fachplaner.bernried@access.invalid'
 };
-const CATEGORY_DB={grundrisse:'grundrisse',schnitte:'schnitte_ansichten'};
-const CATEGORY_UI={grundrisse:'Grundrisse',schnitte_ansichten:'Schnitte und Ansichten'};
+const CATEGORY_UI={plaene:'Pläne',dokumente:'Dokumente'};
+const DOCUMENT_KIND_LABELS={praesentation:'Präsentation',protokoll:'Protokoll',sonstiges:'Sonstiges'};
 const TIMELINE_LABELS={planstand:'Planstand',versand:'Versand',besprechung:'Besprechung',eingang:'Eingang',entscheidung:'Entscheidung',other:'Sonstiges'};
 
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
@@ -24,9 +24,10 @@ let session=null, membership=null, project=null;
 let stands=[], documents=[], images=[], timelineEvents=[], timelineLinks=[], timelineFiles=[];
 let provisionedCredentials=[];
 let selectedRole='tba';
-const selectedStand={grundrisse:null,schnitte_ansichten:null};
+const selectedStand={plaene:null};
 const signedCache=new Map();
 
+function adminMode(){return new URLSearchParams(location.search).get('admin')==='1'}
 function safe(value){return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function cleanName(name){return String(name||'file').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180)}
 function isEditor(){return membership?.role==='editor'}
@@ -101,7 +102,7 @@ async function ownMembership(userId){
 async function routeSession(nextSession){
   session=nextSession;
   membership=null;project=null;
-  if(!session){showAuth('roles');return}
+  if(!session){showAuth(adminMode()?'bootstrap':'roles');return}
 
   const [member,legacy]=await Promise.all([ownMembership(session.user.id),ownLegacyAdmin(session.user.id)]);
   const sharedEmail=Object.values(ROLE_EMAILS).includes(String(session.user.email||'').toLowerCase());
@@ -126,7 +127,7 @@ async function routeSession(nextSession){
   project=p;
   showApp();
   await loadAll();
-  const hash=location.hash.replace('#','');
+  let hash=location.hash.replace('#','');if(hash==='grundrisse'||hash==='schnitte')hash='plaene';
   showView(hash&&$('view-'+hash)?hash:'landing');
 }
 
@@ -207,7 +208,7 @@ async function loadAll(){
   signedCache.clear();
   const pid=project.id;
   const [standsRes,docsRes,imagesRes,eventsRes,linksRes,filesRes]=await Promise.all([
-    sb.from('document_stands').select('*').eq('project_id',pid).order('category').order('sort_order').order('stand_date',{ascending:false}),
+    sb.from('document_stands').select('*').eq('project_id',pid).order('sort_order').order('stand_date',{ascending:false}),
     sb.from('documents').select('*').eq('project_id',pid).eq('is_published',true).order('sort_order'),
     sb.from('images').select('*').eq('project_id',pid).eq('is_published',true).order('sort_order'),
     sb.from('timeline_events').select('*').eq('project_id',pid).order('event_date',{ascending:false}).order('sort_order'),
@@ -217,24 +218,10 @@ async function loadAll(){
   for(const res of [standsRes,docsRes,imagesRes,eventsRes,linksRes,filesRes])if(res.error)throw res.error;
   stands=standsRes.data||[];documents=docsRes.data||[];images=imagesRes.data||[];timelineEvents=eventsRes.data||[];timelineLinks=linksRes.data||[];timelineFiles=filesRes.data||[];
 
-  if(isEditor()&&(!project.landing_path||documents.length===0)){
-    try{
-      const {error}=await sb.functions.invoke('bernried-migrate-legacy-assets',{body:{}});
-      if(!error){
-        const [p2,s2,d2]=await Promise.all([
-          sb.from('projects').select('*').eq('id',project.id).single(),
-          sb.from('document_stands').select('*').eq('project_id',pid).order('category').order('sort_order'),
-          sb.from('documents').select('*').eq('project_id',pid).eq('is_published',true).order('sort_order')
-        ]);
-        if(!p2.error)project=p2.data;if(!s2.error)stands=s2.data||[];if(!d2.error)documents=d2.data||[];
-      }
-    }catch(error){console.warn('Legacy migration pending',error)}
-  }
-
   $('projectName').textContent=project.project_name;
   await renderLanding();
-  renderStandSection('grundrisse');
-  renderStandSection('schnitte_ansichten');
+  renderStandSection('plaene');
+  renderGeneralDocuments();
   await renderImages();
   await renderSchedule();
   renderContact();
@@ -250,8 +237,8 @@ async function renderLanding(){
     try{img.src=await signedUrl(project.landing_path)}catch{img.removeAttribute('src')}
   }else img.removeAttribute('src');
 }
-function standList(category){return stands.filter(s=>s.category===category)}
-function currentStand(category){
+function standList(category='plaene'){return stands.filter(s=>s.category===category)}
+function currentStand(category='plaene'){
   const list=standList(category);
   const selected=selectedStand[category];
   if(selected&&list.some(s=>s.id===selected))return list.find(s=>s.id===selected);
@@ -259,9 +246,8 @@ function currentStand(category){
   selectedStand[category]=current?.id||null;
   return current;
 }
-function renderStandSection(category){
-  const ui=category==='grundrisse'?'grundrisse':'schnitte';
-  const select=$('standSelect-'+ui),note=$('standNote-'+ui),grid=$('grid-'+ui);
+function renderStandSection(category='plaene'){
+  const select=$('standSelect-plaene'),note=$('standNote-plaene'),grid=$('grid-plaene');
   const list=standList(category);
   select.replaceChildren();
   for(const stand of list)select.add(new Option(formatStand(stand),stand.id));
@@ -270,8 +256,8 @@ function renderStandSection(category){
   note.textContent=active?.note||'';
   grid.replaceChildren();
 
-  const rows=active?documents.filter(d=>d.category===category&&d.stand_id===active.id):[];
-  if(!rows.length){grid.innerHTML='<div class="empty">Für diesen Stand sind noch keine Dokumente hinterlegt.</div>';return}
+  const rows=active?documents.filter(d=>d.category==='plaene'&&d.stand_id===active.id):[];
+  if(!rows.length){grid.innerHTML='<div class="empty">Für diesen Stand sind noch keine Pläne hinterlegt.</div>';return}
   rows.sort((a,b)=>a.sort_order-b.sort_order||a.title.localeCompare(b.title));
   for(const doc of rows)grid.appendChild(documentCard(doc));
 }
@@ -285,7 +271,7 @@ function documentCard(doc){
   const left=document.createElement('div');left.innerHTML=`<h2>${safe(doc.title)}</h2><div class="doc-meta">${safe(doc.meta||'')}</div>`;
   const actions=document.createElement('div');actions.className='doc-actions';
   const open=document.createElement('button');open.textContent='Öffnen';open.onclick=()=>openDocument(doc);
-  const dl=document.createElement('button');dl.textContent='Download';dl.onclick=()=>downloadStorage(doc.file_path,doc.title+'.pdf');
+  const dl=document.createElement('button');dl.textContent='Download';dl.onclick=()=>downloadStorage(doc.file_path,(doc.title||'Plan')+'.pdf');
   actions.append(open,dl);
   if(isEditor()){
     const edit=document.createElement('button');edit.textContent='Bearbeiten';edit.onclick=()=>openDocumentDialog(doc);
@@ -303,6 +289,64 @@ async function downloadStorage(path,filename){
 }
 function openViewer(title,content,url){
   $('viewerTitle').textContent=title;$('viewerBody').innerHTML=content;$('viewerModal').classList.add('open');$('viewerNewWindow').onclick=()=>window.open(url,'_blank','noopener');
+}
+function planTitleFromFilename(name){
+  return name.replace(/\.pdf$/i,'').replace(/_VA\d+$/i,'').replace(/^[^\s]+\s*/,'').replace(/\s*_\s*/g,' / ').trim()||name.replace(/\.pdf$/i,'');
+}
+function planNumberFromFilename(name){
+  return (name.match(/^(AN_[A-Z]{2}_\d+|GR_[A-Za-z]{2}_\d+|SN_[A-Z]{2}_\d+)/i)||[])[1]||'';
+}
+async function uploadPlanFiles(files){
+  const active=currentStand('plaene');
+  if(!active)throw new Error('Bitte zuerst einen Planstand anlegen.');
+  const pdfs=[...files].filter(f=>/\.pdf$/i.test(f.name));
+  if(!pdfs.length)return;
+  let order=documents.filter(d=>d.category==='plaene'&&d.stand_id===active.id).length;
+  for(const file of pdfs){
+    const path=await upload(file,`documents/plaene/${cleanName(active.label+'-'+(active.stand_date||''))}`);
+    const number=planNumberFromFilename(file.name);
+    const index=active.label||'';
+    const meta=[number,index?`Index ${index}`:'',active.stand_date?`Stand ${formatDate(active.stand_date)}`:''].filter(Boolean).join(' · ');
+    const payload={project_id:project.id,category:'plaene',title:planTitleFromFilename(file.name),meta,file_path:path,thumbnail_path:null,stand_id:active.id,sort_order:order++,is_published:true,document_kind:'plan',document_date:active.stand_date||null};
+    const {error}=await sb.from('documents').insert(payload);
+    if(error){await removePath(path);throw error}
+  }
+  await loadAll();toast(`${pdfs.length} Pläne hochgeladen.`);
+}
+function renderGeneralDocuments(){
+  const host=$('generalDocuments');host.replaceChildren();
+  const rows=documents.filter(d=>d.category==='dokumente').sort((a,b)=>(b.document_date||'').localeCompare(a.document_date||'')||a.title.localeCompare(b.title));
+  if(!rows.length){host.innerHTML='<div class="empty">Noch keine Dokumente hinterlegt.</div>';return}
+  for(const doc of rows){
+    const row=document.createElement('article');row.className='general-document';
+    const kind=DOCUMENT_KIND_LABELS[doc.document_kind]||'Dokument';
+    const meta=[doc.document_date?formatDate(doc.document_date):'',kind].filter(Boolean).join(' · ');
+    const main=document.createElement('div');main.innerHTML=`<h2>${safe(doc.title)}</h2><div class="doc-meta">${safe(meta)}</div>`;
+    const actions=document.createElement('div');actions.className='doc-actions';
+    const open=document.createElement('button');open.textContent='Öffnen';open.onclick=async()=>window.open(await signedUrl(doc.file_path),'_blank','noopener');
+    const dl=document.createElement('button');dl.textContent='Download';dl.onclick=()=>downloadStorage(doc.file_path,doc.title);
+    actions.append(open,dl);
+    if(isEditor()){
+      const del=document.createElement('button');del.textContent='Löschen';del.onclick=()=>deleteDocument(doc);actions.append(del);
+    }
+    row.append(main,actions);host.append(row);
+  }
+}
+async function saveGeneralDocuments(event){
+  event.preventDefault();
+  const files=[...$('generalDocumentFiles').files];
+  if(!files.length)return;
+  $('generalDocumentError').textContent='';
+  try{
+    let order=documents.filter(d=>d.category==='dokumente').length;
+    for(const file of files){
+      const path=await upload(file,'documents/dokumente');
+      const payload={project_id:project.id,category:'dokumente',title:file.name,meta:'',file_path:path,thumbnail_path:null,stand_id:null,sort_order:order++,is_published:true,document_kind:$('generalDocumentKind').value,document_date:$('generalDocumentDate').value||null};
+      const {error}=await sb.from('documents').insert(payload);
+      if(error){await removePath(path);throw error}
+    }
+    $('generalDocumentDialog').close();$('generalDocumentFiles').value='';await loadAll();toast(`${files.length} Dokumente hochgeladen.`);
+  }catch(error){$('generalDocumentError').textContent=error.message}
 }
 
 async function renderImages(){
@@ -323,10 +367,19 @@ async function renderImages(){
 }
 async function renderSchedule(){
   const schedule=documents.find(d=>d.category==='terminplan');
-  $('scheduleEmpty').classList.toggle('hidden',Boolean(schedule));
-  $('scheduleFrame').classList.toggle('hidden',!schedule);
-  if(schedule)$('scheduleFrame').src=await signedUrl(schedule.file_path);
+  const isPdf=Boolean(schedule&&/\.pdf(?:$|\?)/i.test(schedule.file_path||''));
+  $('scheduleEmpty').classList.toggle('hidden',isPdf);
+  $('scheduleFrame').classList.toggle('hidden',!isPdf);
+  if(isPdf){
+    $('scheduleFrame').src=(await signedUrl(schedule.file_path))+'#view=FitH';
+  }else{
+    $('scheduleFrame').removeAttribute('src');
+    $('scheduleEmpty').textContent=schedule
+      ? 'Der bisherige HTML-Terminplan wird im privaten Storage nicht korrekt eingebettet. Bitte den Terminplan als PDF ersetzen.'
+      : 'Noch kein Terminplan hinterlegt.';
+  }
 }
+
 function renderContact(){
   const c=project.contact||{},website=c.website||'',href=/^https?:/.test(website)?website:'https://'+website;
   $('contactData').innerHTML=`<div class="contact-block">${safe(c.office||'')}</div><div class="contact-block">${safe(c.street||'')}<br>${safe(c.building||'')}<br>${safe(c.postal||'')}</div><div class="contact-block">Fon ${safe(c.phone||'')}<br>Fax ${safe(c.fax||'')}</div><div class="contact-block"><a href="mailto:${safe(c.email||'')}">${safe(c.email||'')}</a><br><a href="${safe(href)}" target="_blank" rel="noopener">${safe(website)}</a></div>`;
@@ -379,7 +432,7 @@ async function run(task,message){
   try{await task();await loadAll();if(message)toast(message)}catch(error){console.error(error);toast(error.message||'Aktion fehlgeschlagen.',true)}
 }
 
-function fillStandDialog(stand=null,category='grundrisse'){
+function fillStandDialog(stand=null,category='plaene'){
   $('standDialogTitle').textContent=stand?'Stand bearbeiten':'Stand hinzufügen';
   $('standId').value=stand?.id||'';$('standCategory').value=stand?.category||category;
   $('standLabel').value=stand?.label||'';$('standDate').value=stand?.stand_date||'';
@@ -402,7 +455,7 @@ function fillDocumentStandOptions(category,selected=''){
   for(const stand of standList(category))select.add(new Option(formatStand(stand),stand.id));
   select.value=selected||currentStand(category)?.id||'';
 }
-function openDocumentDialog(doc=null,category='grundrisse'){
+function openDocumentDialog(doc=null,category='plaene'){
   $('docDialogTitle').textContent=doc?'Dokument bearbeiten':'Dokument hinzufügen';
   $('docId').value=doc?.id||'';$('docCategory').value=doc?.category||category;
   $('docTitle').value=doc?.title||'';$('docMeta').value=doc?.meta||'';
@@ -417,7 +470,7 @@ async function saveDocument(event){
     if(!existing&&!pdf)throw new Error('Bitte PDF auswählen.');
     if(pdf)filePath=await upload(pdf,'documents/'+$('docCategory').value);
     if(thumb)thumbPath=await upload(thumb,'documents/'+$('docCategory').value+'/thumbs');
-    const payload={project_id:project.id,category:$('docCategory').value,title:$('docTitle').value.trim()||pdf?.name.replace(/\.pdf$/i,'')||existing?.title,meta:$('docMeta').value.trim(),file_path:filePath,thumbnail_path:thumbPath||null,stand_id:$('docStand').value||null,sort_order:existing?.sort_order??documents.filter(d=>d.category===$('docCategory').value&&d.stand_id===$('docStand').value).length,is_published:true};
+    const active=stands.find(s=>s.id===$('docStand').value);const payload={project_id:project.id,category:'plaene',title:$('docTitle').value.trim()||pdf?.name.replace(/\.pdf$/i,'')||existing?.title,meta:$('docMeta').value.trim(),file_path:filePath,thumbnail_path:thumbPath||null,stand_id:$('docStand').value||null,sort_order:existing?.sort_order??documents.filter(d=>d.category==='plaene'&&d.stand_id===$('docStand').value).length,is_published:true,document_kind:'plan',document_date:active?.stand_date||null};
     let result;
     if(existing)result=await sb.from('documents').update(payload).eq('id',existing.id);else result=await sb.from('documents').insert(payload);
     if(result.error)throw result.error;
@@ -501,9 +554,10 @@ async function saveLanding(file){
 }
 async function saveSchedule(file){
   if(!file)return;
+  if(!/\.pdf$/i.test(file.name)){toast('Bitte den Terminplan als PDF hochladen.',true);return}
   await run(async()=>{
     const current=documents.find(d=>d.category==='terminplan'),path=await upload(file,'documents/terminplan');
-    const payload={project_id:project.id,category:'terminplan',title:file.name,meta:'',file_path:path,thumbnail_path:null,stand_id:null,sort_order:0,is_published:true};
+    const payload={project_id:project.id,category:'terminplan',title:'Planungsterminplan LPH 3 · Vorabzug',meta:'PDF · Vorabzug',file_path:path,thumbnail_path:null,stand_id:null,sort_order:0,is_published:true,document_kind:'terminplan',document_date:null};
     const res=current?await sb.from('documents').update(payload).eq('id',current.id):await sb.from('documents').insert(payload);
     if(res.error){await removePath(path);throw res.error}
     if(current)await removePath(current.file_path);
@@ -518,8 +572,7 @@ function bind(){
     if(error){$('authMessage').textContent='Login nicht möglich. Bitte Passwort prüfen.';return}
     await routeSession(data.session);
   };
-  $('showBootstrapLogin').onclick=()=>showAuth('bootstrap');
-  $('backToRoleLogin').onclick=()=>{sb.auth.signOut();showAuth('roles')};
+  $('backToRoleLogin').onclick=()=>{history.replaceState(null,'',location.pathname);sb.auth.signOut();showAuth('roles')};
   $('bootstrapLoginForm').onsubmit=async e=>{
     e.preventDefault();$('bootstrapStatus').textContent='';
     const {data,error}=await sb.auth.signInWithPassword({email:$('bootstrapEmail').value.trim(),password:$('bootstrapPassword').value});
@@ -536,17 +589,15 @@ function bind(){
   $('viewerClose').onclick=()=>{$('viewerModal').classList.remove('open');$('viewerBody').replaceChildren()};
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('viewerModal').classList.contains('open'))$('viewerClose').click()});
 
-  $('standSelect-grundrisse').onchange=e=>{selectedStand.grundrisse=e.target.value;renderStandSection('grundrisse')};
-  $('standSelect-schnitte').onchange=e=>{selectedStand.schnitte_ansichten=e.target.value;renderStandSection('schnitte_ansichten')};
-  $('addStand-grundrisse').onclick=()=>fillStandDialog(null,'grundrisse');
-  $('addStand-schnitte').onclick=()=>fillStandDialog(null,'schnitte_ansichten');
-  $('editStand-grundrisse').onclick=()=>{const s=currentStand('grundrisse');if(s)fillStandDialog(s)};
-  $('editStand-schnitte').onclick=()=>{const s=currentStand('schnitte_ansichten');if(s)fillStandDialog(s)};
+  $('standSelect-plaene').onchange=e=>{selectedStand.plaene=e.target.value;renderStandSection('plaene')};
+  $('addStand-plaene').onclick=()=>fillStandDialog(null,'plaene');
+  $('editStand-plaene').onclick=()=>{const s=currentStand('plaene');if(s)fillStandDialog(s)};
+  $('planFiles').onchange=async e=>{try{await uploadPlanFiles(e.target.files)}catch(error){toast(error.message||'Upload fehlgeschlagen.',true)}finally{e.target.value=''}};
   $('standForm').onsubmit=saveStand;$('closeStandDialog').onclick=()=>$('standDialog').close();
 
-  $('addDoc-grundrisse').onclick=()=>openDocumentDialog(null,'grundrisse');
-  $('addDoc-schnitte').onclick=()=>openDocumentDialog(null,'schnitte_ansichten');
   $('documentForm').onsubmit=saveDocument;$('closeDocumentDialog').onclick=()=>$('documentDialog').close();
+  $('addGeneralDocument').onclick=()=>{$('generalDocumentError').textContent='';$('generalDocumentDate').value=new Date().toISOString().slice(0,10);$('generalDocumentFiles').value='';$('generalDocumentDialog').showModal()};
+  $('generalDocumentForm').onsubmit=saveGeneralDocuments;$('closeGeneralDocumentDialog').onclick=()=>$('generalDocumentDialog').close();
 
   $('addTimeline').onclick=()=>openTimelineDialog();$('timelineForm').onsubmit=saveTimelineEvent;$('closeTimelineDialog').onclick=()=>$('timelineDialog').close();
 

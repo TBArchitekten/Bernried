@@ -23,8 +23,7 @@
         <form id="roleLoginForm">
           <label for="rolePassword">Passwort</label>
           <input id="rolePassword" type="password" autocomplete="current-password" required>
-          <div class="auth-actions">
-            <button class="text-button" id="showBootstrapLogin" type="button">Projektzugänge einrichten</button>
+          <div class="auth-actions auth-actions-end">
             <button class="primary" type="submit">Anmelden</button>
           </div>
         </form>
@@ -32,8 +31,8 @@
       </div>
 
       <div class="hidden" id="bootstrapLogin">
-        <h1>Projektzugänge einrichten</h1>
-        <p>Einmalige Einrichtung über den bestehenden Bernried-Adminzugang.</p>
+        <h1>Administration</h1>
+        <p>Privater administrativer Zugang für Bernried.</p>
         <form id="bootstrapLoginForm">
           <label for="bootstrapEmail">Bestehende Admin-E-Mail</label>
           <input id="bootstrapEmail" type="email" autocomplete="username" required>
@@ -66,11 +65,11 @@
       <div class="brand">Titus Bernhard <strong>Architekten</strong></div>
       <button class="project-name" id="projectName" title="Startseite">Bernried · Museum der Komischen Kunst</button>
       <nav class="site-nav" aria-label="Projekt-Navigation">
-        <button data-view="grundrisse">Grundrisse</button>
-        <button data-view="schnitte">Schnitte und Ansichten</button>
+        <button data-view="plaene">Pläne</button>
         <button data-view="modell">3D Modell</button>
         <button data-view="terminplan">Terminplan</button>
         <button data-view="timeline">Timeline</button>
+        <button data-view="dokumente">Dokumente</button>
         <button data-view="images">Images</button>
         <button data-view="kontakt">Kontakt</button>
       </nav>
@@ -92,43 +91,28 @@
         <div class="landing-view"><img id="landingImage" alt="Bernried · Projekt"></div>
       </section>
 
-      <section class="view" id="view-grundrisse">
+      <section class="view" id="view-plaene">
         <div class="content">
           <div class="section-head">
-            <h1>Grundrisse</h1>
+            <div>
+              <h1>Pläne</h1>
+              <div class="doc-meta">Grundrisse · Schnitte · Ansichten · Nachweise</div>
+            </div>
             <div class="editor-only section-actions">
-              <button id="addStand-grundrisse" type="button">+ Stand</button>
-              <button id="editStand-grundrisse" type="button">Stand bearbeiten</button>
-              <button id="addDoc-grundrisse" type="button">+ Dokument</button>
+              <button id="addStand-plaene" type="button">+ Stand</button>
+              <button id="editStand-plaene" type="button">Stand bearbeiten</button>
+              <label class="file-action">+ Pläne hochladen
+                <input id="planFiles" type="file" accept=".pdf,application/pdf" multiple>
+              </label>
             </div>
           </div>
           <div class="stand-bar">
             <label class="stand-select-wrap">Stand
-              <select class="stand-select" id="standSelect-grundrisse"></select>
+              <select class="stand-select" id="standSelect-plaene"></select>
             </label>
-            <div class="stand-note" id="standNote-grundrisse"></div>
+            <div class="stand-note" id="standNote-plaene"></div>
           </div>
-          <div class="doc-grid" id="grid-grundrisse"></div>
-        </div>
-      </section>
-
-      <section class="view" id="view-schnitte">
-        <div class="content">
-          <div class="section-head">
-            <h1>Schnitte und Ansichten</h1>
-            <div class="editor-only section-actions">
-              <button id="addStand-schnitte" type="button">+ Stand</button>
-              <button id="editStand-schnitte" type="button">Stand bearbeiten</button>
-              <button id="addDoc-schnitte" type="button">+ Dokument</button>
-            </div>
-          </div>
-          <div class="stand-bar">
-            <label class="stand-select-wrap">Stand
-              <select class="stand-select" id="standSelect-schnitte"></select>
-            </label>
-            <div class="stand-note" id="standNote-schnitte"></div>
-          </div>
-          <div class="doc-grid" id="grid-schnitte"></div>
+          <div class="doc-grid" id="grid-plaene"></div>
         </div>
       </section>
 
@@ -142,7 +126,7 @@
 
       <section class="view" id="view-terminplan">
         <div class="editor-only admin-bar">
-          <label>Terminplan ersetzen <input id="scheduleFile" type="file" accept=".html,.htm,.pdf"></label>
+          <label>Terminplan ersetzen <input id="scheduleFile" type="file" accept=".pdf,application/pdf"></label>
         </div>
         <div class="schedule-view">
           <div class="empty hidden" id="scheduleEmpty">Noch kein Terminplan hinterlegt.</div>
@@ -162,6 +146,21 @@
             </div>
           </div>
           <div class="timeline" id="timelineList"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-dokumente">
+        <div class="content">
+          <div class="section-head">
+            <div>
+              <h1>Dokumente</h1>
+              <div class="doc-meta">Präsentationen · Protokolle · weitere Projektunterlagen</div>
+            </div>
+            <div class="editor-only section-actions">
+              <button id="addGeneralDocument" type="button">+ Dokument</button>
+            </div>
+          </div>
+          <div class="document-list" id="generalDocuments"></div>
         </div>
       </section>
 
@@ -196,7 +195,7 @@
     <form id="standForm">
       <div class="dialog-head"><h2 id="standDialogTitle">Stand</h2><button id="closeStandDialog" type="button" aria-label="Schließen">×</button></div>
       <input id="standId" type="hidden">
-      <label>Kategorie<select id="standCategory"><option value="grundrisse">Grundrisse</option><option value="schnitte_ansichten">Schnitte und Ansichten</option></select></label>
+      <input id="standCategory" type="hidden" value="plaene">
       <div class="form-row">
         <label>Bezeichnung<input id="standLabel" required maxlength="160" placeholder="z. B. Stand 01"></label>
         <label>Datum<input id="standDate" type="date"></label>
@@ -212,7 +211,7 @@
     <form id="documentForm">
       <div class="dialog-head"><h2 id="docDialogTitle">Dokument</h2><button id="closeDocumentDialog" type="button" aria-label="Schließen">×</button></div>
       <input id="docId" type="hidden">
-      <label>Kategorie<select id="docCategory"><option value="grundrisse">Grundrisse</option><option value="schnitte_ansichten">Schnitte und Ansichten</option></select></label>
+      <input id="docCategory" type="hidden" value="plaene">
       <label>Stand<select id="docStand"></select></label>
       <label>Titel<input id="docTitle" maxlength="240"></label>
       <label>Meta / Planbezeichnung<input id="docMeta" maxlength="2000" placeholder="z. B. M 1:100 · Arbeitsstand"></label>
@@ -222,6 +221,23 @@
       </div>
       <div class="dialog-message" id="docError"></div>
       <div class="dialog-actions"><button class="primary" type="submit">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog" id="generalDocumentDialog">
+    <form id="generalDocumentForm">
+      <div class="dialog-head"><h2>Dokumente hochladen</h2><button id="closeGeneralDocumentDialog" type="button" aria-label="Schließen">×</button></div>
+      <div class="form-row">
+        <label>Datum<input id="generalDocumentDate" type="date"></label>
+        <label>Art<select id="generalDocumentKind">
+          <option value="praesentation">Präsentation</option>
+          <option value="protokoll">Protokoll</option>
+          <option value="sonstiges">Sonstiges</option>
+        </select></label>
+      </div>
+      <label>Dateien<input id="generalDocumentFiles" type="file" multiple required></label>
+      <div class="dialog-message" id="generalDocumentError"></div>
+      <div class="dialog-actions"><button class="primary" type="submit">Hochladen</button></div>
     </form>
   </dialog>
 
