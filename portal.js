@@ -134,6 +134,22 @@ function adminMode(){return new URLSearchParams(location.search).get('admin')===
 function safe(value){return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function cleanName(name){return String(name||'file').normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(0,180)}
 function isEditor(){return membership?.role==='editor'}
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function isJwtFutureError(error){
+  return /jwt issued at future/i.test(String(error?.message||error||''));
+}
+async function withJwtFutureRetry(task,{attempts=5,delay=900}={}){
+  let lastError;
+  for(let i=0;i<attempts;i++){
+    try{return await task()}
+    catch(error){
+      lastError=error;
+      if(!isJwtFutureError(error)||i===attempts-1)throw error;
+      await sleep(delay*(i+1));
+    }
+  }
+  throw lastError;
+}
 function toast(message,error=false){
   const host=$('toast');host.textContent=message;host.classList.toggle('error',error);host.classList.remove('hidden');
   clearTimeout(toast.timer);toast.timer=setTimeout(()=>host.classList.add('hidden'),4200);
@@ -193,14 +209,18 @@ function setRole(role){
   $('rolePassword').focus();
 }
 async function ownLegacyAdmin(userId){
-  const {data,error}=await sb.from('project_admins').select('project_id,user_id').eq('user_id',userId).maybeSingle();
-  if(error)throw error;
-  return data;
+  return withJwtFutureRetry(async()=>{
+    const {data,error}=await sb.from('project_admins').select('project_id,user_id').eq('user_id',userId).maybeSingle();
+    if(error)throw error;
+    return data;
+  });
 }
 async function ownMembership(userId){
-  const {data,error}=await sb.from('project_members').select('*').eq('user_id',userId).maybeSingle();
-  if(error)throw error;
-  return data;
+  return withJwtFutureRetry(async()=>{
+    const {data,error}=await sb.from('project_members').select('*').eq('user_id',userId).maybeSingle();
+    if(error)throw error;
+    return data;
+  });
 }
 async function routeSession(nextSession){
   session=nextSession;
@@ -225,8 +245,11 @@ async function routeSession(nextSession){
   }
 
   membership=member;
-  const {data:p,error}=await sb.from('projects').select('*').eq('id',member.project_id).single();
-  if(error)throw error;
+  const p=await withJwtFutureRetry(async()=>{
+    const {data,error}=await sb.from('projects').select('*').eq('id',member.project_id).single();
+    if(error)throw error;
+    return data;
+  });
   project=p;
   showApp();
   await loadAll();
@@ -747,7 +770,14 @@ function bind(){
     e.preventDefault();$('authMessage').textContent='';
     const {data,error}=await sb.auth.signInWithPassword({email:ROLE_EMAILS[selectedRole],password:$('rolePassword').value});
     if(error){$('authMessage').textContent='Login nicht möglich. Bitte Passwort prüfen.';return}
-    await routeSession(data.session);
+    try{
+      await routeSession(data.session);
+    }catch(routeError){
+      console.error(routeError);
+      $('authMessage').textContent=isJwtFutureError(routeError)
+        ?'Anmeldung wird vorbereitet. Bitte in wenigen Sekunden erneut versuchen.'
+        :'Anmeldung konnte nicht abgeschlossen werden.';
+    }
   };
   $('backToRoleLogin').onclick=()=>{history.replaceState(null,'',location.pathname);sb.auth.signOut();showAuth('roles')};
   $('bootstrapLoginForm').onsubmit=async e=>{
@@ -796,7 +826,15 @@ async function boot(){
   bind();setRole('tba');
   const {data,error}=await sb.auth.getSession();
   if(error){showAuth('roles');return}
-  await routeSession(data.session);
+  try{
+    await routeSession(data.session);
+  }catch(error){
+    console.error(error);
+    showAuth(adminMode()?'bootstrap':'roles');
+    $('authMessage').textContent=isJwtFutureError(error)
+      ?'Anmeldung wird vorbereitet. Bitte in wenigen Sekunden erneut versuchen.'
+      :'Start fehlgeschlagen.';
+  }
   sb.auth.onAuthStateChange((event,next)=>{
     if(event==='TOKEN_REFRESHED'||event==='USER_UPDATED')return;
     setTimeout(()=>routeSession(next).catch(err=>{console.error(err);showAuth('roles')}),0);
