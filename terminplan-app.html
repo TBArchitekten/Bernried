@@ -548,8 +548,7 @@
   const PROJECT_ID='29c0726b-3e1e-4f48-81d3-b0f90d324d56';
   const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const initialData={project:{name:'2401 Bernried · LPH 3',start:'2026-07-27',end:'2026-11-27'},groups:[],tasks:[]};
-  let data = initialData
-  let data = loadData();
+  let data = initialData;
   let zoom = 'week';
   let hideWeekends = true;
   let cellWidth = 28;
