@@ -98,19 +98,19 @@
               <h1>Pläne</h1>
               <div class="doc-meta">Grundrisse · Schnitte · Ansichten · Nachweise</div>
             </div>
-            <div class="editor-only section-actions">
-              <button id="addStand-plaene" type="button">+ Stand</button>
-              <button id="editStand-plaene" type="button">Stand bearbeiten</button>
-              <label class="file-action">+ Pläne hochladen
-                <input id="planFiles" type="file" accept=".pdf,application/pdf" multiple>
-              </label>
-            </div>
           </div>
           <div class="stand-bar">
             <label class="stand-select-wrap">Stand
               <select class="stand-select" id="standSelect-plaene"></select>
             </label>
             <div class="stand-note" id="standNote-plaene"></div>
+            <div class="editor-only section-actions plan-actions">
+              <button id="addStand-plaene" type="button">+ Stand</button>
+              <button id="editStand-plaene" type="button">Stand bearbeiten</button>
+              <label class="file-action">+ Pläne hochladen
+                <input id="planFiles" type="file" accept=".pdf,application/pdf" multiple>
+              </label>
+            </div>
           </div>
           <div class="doc-grid" id="grid-plaene"></div>
         </div>
