@@ -546,7 +546,8 @@
   const SUPABASE_URL='https://mmrteayudgywutghpdev.supabase.co';
   const SUPABASE_KEY='sb_publishable_P4lOIuijwNF7oleGDoeAuQ_7OLJOaGV';
   const PROJECT_ID='29c0726b-3e1e-4f48-81d3-b0f90d324d56';
-  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  const EMBED_SESSION=null;
+  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
   const initialData={project:{name:'2401 Bernried · LPH 3',start:'2026-07-27',end:'2026-11-27'},groups:[],tasks:[]};
   let data = initialData;
   let zoom = 'week';
@@ -598,6 +599,10 @@
   }
 
   async function loadRemoteData(){
+    if(EMBED_SESSION?.access_token&&EMBED_SESSION?.refresh_token){
+      const {error:setSessionError}=await sb.auth.setSession(EMBED_SESSION);
+      if(setSessionError)throw setSessionError;
+    }
     const {data:sessionData,error:sessionError}=await sb.auth.getSession();
     if(sessionError||!sessionData.session){
       document.body.innerHTML='<div class="empty">Keine gültige Projektsitzung.</div>';
