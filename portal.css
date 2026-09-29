@@ -23,3 +23,5 @@
 @media(max-width:800px){.general-document{grid-template-columns:1fr;gap:10px}}
 
 #view-terminplan > .admin-bar{display:none!important}
+
+.plan-actions{margin-left:auto;flex:none}
