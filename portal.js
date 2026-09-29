@@ -367,16 +367,37 @@ async function renderImages(){
 }
 async function renderSchedule(){
   const schedule=documents.find(d=>d.category==='terminplan');
-  const isPdf=Boolean(schedule&&/\.pdf(?:$|\?)/i.test(schedule.file_path||''));
-  $('scheduleEmpty').classList.toggle('hidden',isPdf);
-  $('scheduleFrame').classList.toggle('hidden',!isPdf);
-  if(isPdf){
-    $('scheduleFrame').src=(await signedUrl(schedule.file_path))+'#view=FitH';
-  }else{
+  $('scheduleEmpty').classList.toggle('hidden',Boolean(schedule));
+  $('scheduleFrame').classList.toggle('hidden',!schedule);
+  if(!schedule){
     $('scheduleFrame').removeAttribute('src');
-    $('scheduleEmpty').textContent=schedule
-      ? 'Der bisherige HTML-Terminplan wird im privaten Storage nicht korrekt eingebettet. Bitte den Terminplan als PDF ersetzen.'
-      : 'Noch kein Terminplan hinterlegt.';
+    $('scheduleFrame').srcdoc='';
+    return;
+  }
+  try{
+    const url=await signedUrl(schedule.file_path);
+    const response=await fetch(url,{cache:'no-store'});
+    if(!response.ok)throw new Error('Terminplan konnte nicht geladen werden.');
+    let html=await response.text();
+
+    // Keep the original interactive Terminplan, but make viewer accounts read-only.
+    if(!isEditor()){
+      const readonlyStyle=`<style>
+        #addTaskBtn,#addMilestoneBtn,#addGroupBtn,#importJsonBtn,#resetBtn,
+        #taskDialog,#groupDialog,#contextMenu{display:none!important}
+        .bar,.milestone,.duration-edit{pointer-events:none!important}
+      </style>`;
+      html=html.replace('</head>',readonlyStyle+'</head>');
+    }
+
+    const frame=$('scheduleFrame');
+    frame.removeAttribute('src');
+    frame.srcdoc=html;
+  }catch(error){
+    console.error(error);
+    $('scheduleFrame').classList.add('hidden');
+    $('scheduleEmpty').classList.remove('hidden');
+    $('scheduleEmpty').textContent='Terminplan konnte nicht geladen werden.';
   }
 }
 
@@ -554,13 +575,25 @@ async function saveLanding(file){
 }
 async function saveSchedule(file){
   if(!file)return;
-  if(!/\.pdf$/i.test(file.name)){toast('Bitte den Terminplan als PDF hochladen.',true);return}
+  if(!/\.(html?|HTML?)$/.test(file.name)){toast('Bitte den interaktiven Terminplan als HTML-Datei hochladen.',true);return}
   await run(async()=>{
     const current=documents.find(d=>d.category==='terminplan'),path=await upload(file,'documents/terminplan');
-    const payload={project_id:project.id,category:'terminplan',title:'Planungsterminplan LPH 3 · Vorabzug',meta:'PDF · Vorabzug',file_path:path,thumbnail_path:null,stand_id:null,sort_order:0,is_published:true,document_kind:'terminplan',document_date:null};
+    const payload={
+      project_id:project.id,
+      category:'terminplan',
+      title:'Planungsterminplan LPH 3',
+      meta:'Interaktiver Terminplan',
+      file_path:path,
+      thumbnail_path:null,
+      stand_id:null,
+      sort_order:0,
+      is_published:true,
+      document_kind:'terminplan',
+      document_date:null
+    };
     const res=current?await sb.from('documents').update(payload).eq('id',current.id):await sb.from('documents').insert(payload);
     if(res.error){await removePath(path);throw res.error}
-    if(current)await removePath(current.file_path);
+    if(current&&current.file_path!==path)await removePath(current.file_path);
   },'Terminplan gespeichert.');
 }
 
