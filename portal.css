@@ -21,3 +21,5 @@
 .general-document h2{font-size:16px;font-weight:400;margin:0 0 5px}
 .general-document .doc-actions{align-items:center}
 @media(max-width:800px){.general-document{grid-template-columns:1fr;gap:10px}}
+
+#view-terminplan > .admin-bar{display:none!important}
