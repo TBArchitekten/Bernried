@@ -65,12 +65,12 @@
   .splitter:hover{background:rgba(17,17,17,.12)}
   .left-head{
     height:var(--header-h);min-height:var(--header-h);background:#fbfbfa;border-bottom:1px solid var(--line-strong);
-    display:grid;grid-template-columns:64px minmax(0,1fr) 115px 92px 92px 70px 140px;align-items:end;padding-right:18px
+    display:grid;grid-template-columns:54px minmax(0,1fr) 115px 92px 92px 70px 140px;align-items:end;padding-right:18px
   }
   .left-head div{padding:0 8px 10px;font-size:11px;font-weight:650;color:#56606d;text-transform:uppercase;letter-spacing:.03em}
   .left-scroll{overflow-y:auto;overflow-x:hidden;flex:1;scrollbar-gutter:stable;min-width:0}
   .row{
-    height:var(--row-h);display:grid;grid-template-columns:64px minmax(0,1fr) 115px 92px 92px 70px 140px;
+    height:var(--row-h);display:grid;grid-template-columns:54px minmax(0,1fr) 115px 92px 92px 70px 140px;
     align-items:center;border-bottom:1px solid #edf0f3;font-size:12.5px;background:#fff
   }
   .row{width:100%;min-width:0}
@@ -256,7 +256,7 @@
     .print-left-head{
       height:15mm;
       display:grid;
-      grid-template-columns:8% 42% 17% 11% 11% 11%;
+      grid-template-columns:7% 43% 17% 11% 11% 11%;
       align-items:end;
       border-bottom:0.3mm solid #6b7280;
       background:#f3f4f6!important;
@@ -273,7 +273,7 @@
 
     .print-left-row{
       display:grid;
-      grid-template-columns:8% 42% 17% 11% 11% 11%;
+      grid-template-columns:7% 43% 17% 11% 11% 11%;
       align-items:center;
       border-bottom:0.18mm solid #d1d5db;
       overflow:hidden;
@@ -362,7 +362,8 @@
   body.read-only #resetBtn,
   body.read-only #taskDialog,
   body.read-only #groupDialog,
-  body.read-only #contextMenu{display:none!important}
+  body.read-only #contextMenu,
+  body.read-only .color-picker{display:none!important}
   body.read-only .bar,
   body.read-only .milestone,
   body.read-only .duration-edit,
@@ -570,6 +571,11 @@
   const groupDialog = $('#groupDialog');
 
   function clone(o){return JSON.parse(JSON.stringify(o))}
+  function ownerDisplay(owner){return String(owner||'—').replace(/\bArchitektur\b/g,'ARC')}
+  function localIsoToday(){
+    const now=new Date();
+    return [now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  }
   let canEdit=false;
   let remoteReady=false;
   let saveTimer=null;
@@ -596,6 +602,9 @@
 
   function applyReadOnlyMode(){
     document.body.classList.toggle('read-only',!canEdit);
+    ['#addTaskBtn','#addMilestoneBtn','#addGroupBtn','#importJsonBtn','#saveTaskBtn','#deleteTaskBtn','#saveGroupBtn']
+      .forEach(sel=>{const el=$(sel);if(el)el.disabled=!canEdit});
+    document.querySelectorAll('.color-picker').forEach(el=>el.disabled=!canEdit);
   }
 
   async function loadRemoteData(){
@@ -825,7 +834,7 @@
         el.innerHTML=`
           <div class="cell wbs">${r.wbs}</div>
           <div class="cell name-cell" title="${esc(r.name)}"><span class="indent"></span>${r.type==='milestone'?'◆ ':''}${esc(r.name)}</div>
-          <div class="cell">${esc(r.owner||'—')}</div>
+          <div class="cell">${esc(ownerDisplay(r.owner))}</div>
           <div class="cell">${fmtDate(r.start)}</div>
           <div class="cell">${fmtDate(r.end)}</div>
           <div class="cell">${r.type==='milestone'
@@ -852,6 +861,7 @@
   }
 
   function beginDurationEdit(button,id){
+    if(!canEdit)return;
     const task=data.tasks.find(t=>t.id===id);
     if(!task||task.type==='milestone')return;
 
@@ -962,6 +972,7 @@
   }
 
   function startDrag(e,t,mode){
+    if(!canEdit)return;
     e.preventDefault();e.stopPropagation();
     const task=data.tasks.find(x=>x.id===t.id);if(!task)return;
 
@@ -1041,6 +1052,7 @@
   }
 
   function openTask(id=null,type='task'){
+    if(!canEdit)return;
     const t=id?data.tasks.find(x=>x.id===id):null;
     $('#modalTitle').textContent=t?'Vorgang bearbeiten':(type==='milestone'?'Meilenstein anlegen':'Aufgabe anlegen');
     $('#taskId').value=t?.id||'';
@@ -1068,6 +1080,7 @@
     data.tasks.filter(t=>t.id!==currentId).sort((a,b)=>a.start.localeCompare(b.start)).forEach(t=>{const o=new Option(t.name,t.id);if(t.id===selected)o.selected=true;sel.add(o)});
   }
   function saveTask(){
+    if(!canEdit)return;
     const id=$('#taskId').value||uid('t');
     const type=$('#taskType').value;
     const obj={
@@ -1082,6 +1095,7 @@
     taskDialog.close();render();toast('Vorgang gespeichert.');
   }
   function deleteTask(id=$('#taskId').value){
+    if(!canEdit)return;
     if(!id)return;
     const t=data.tasks.find(x=>x.id===id);if(!t)return;
     if(!confirm(`„${t.name}“ wirklich löschen?`))return;
@@ -1089,17 +1103,20 @@
     taskDialog.close();hideContext();render();toast('Vorgang gelöscht.');
   }
   function duplicateTask(id){
+    if(!canEdit)return;
     const t=data.tasks.find(x=>x.id===id);if(!t)return;
     const c=clone(t);c.id=uid('t');c.name=t.name+' · Kopie';c.start=addDays(t.start,1);c.end=addDays(t.end,1);c.pred='';
     data.tasks.push(c);render();toast('Vorgang dupliziert.');
   }
 
   function openGroup(id=null){
+    if(!canEdit)return;
     const g=id?data.groups.find(x=>x.id===id):null;
     $('#groupId').value=g?.id||'';$('#groupWbs').value=g?.wbs||String(data.groups.length).padStart(2,'0');
     $('#groupName').value=g?.name||'';$('#groupCategory').value=g?.category||'qa';groupDialog.showModal();
   }
   function saveGroup(){
+    if(!canEdit)return;
     const id=$('#groupId').value||uid('g');
     const obj={id,wbs:$('#groupWbs').value.trim(),name:$('#groupName').value.trim(),category:$('#groupCategory').value,collapsed:false};
     if(!obj.name){toast('Bezeichnung ist erforderlich.');return}
@@ -1107,7 +1124,7 @@
     groupDialog.close();render();toast('Sammelvorgang gespeichert.');
   }
 
-  function showContext(e,id){e.preventDefault();contextId=id;const m=$('#contextMenu');m.style.display='block';m.style.left=e.clientX+'px';m.style.top=e.clientY+'px'}
+  function showContext(e,id){e.preventDefault();if(!canEdit)return;contextId=id;const m=$('#contextMenu');m.style.display='block';m.style.left=e.clientX+'px';m.style.top=e.clientY+'px'}
   function hideContext(){$('#contextMenu').style.display='none';contextId=null}
   function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
   function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
@@ -1171,7 +1188,7 @@
         line.innerHTML=
           `<div>${esc(row.wbs)}</div>`+
           `<div class="print-name">${row.type==='milestone'?'◆ ':''}${esc(row.name)}</div>`+
-          `<div>${esc(row.owner||'—')}</div>`+
+          `<div>${esc(ownerDisplay(row.owner))}</div>`+
           `<div>${fmtDate(row.start)}</div>`+
           `<div>${fmtDate(row.end)}</div>`+
           `<div>${row.type==='milestone'?'0 AT':workDuration(row.start,row.end)+' AT'}</div>`;
@@ -1514,6 +1531,7 @@
   ['arch','fach','ag','cost'].forEach(key=>{
     const input=$('#color-'+key);
     if(input) input.oninput=e=>{
+      if(!canEdit)return;
       uiState.colors={...DEFAULT_COLORS,...(uiState.colors||{}),[key]:e.target.value};
       applyUIState();
       render();
@@ -1525,14 +1543,18 @@
     zoom=b.dataset.zoom;document.querySelectorAll('[data-zoom]').forEach(x=>x.classList.toggle('active',x===b));render();
   });
   $('#todayBtn').onclick=()=>{
-    const today=iso(new Date());
+    const today=localIsoToday();
     const start=data.project.start;
     const end=data.project.end;
     let target=today;
-    if(today<start){target=start;toast('Heute liegt vor dem Projektzeitraum. Es wurde zum Projektbeginn gesprungen.');}
-    else if(today>end){target=end;toast('Heute liegt nach dem Projektzeitraum. Es wurde zum Projektende gesprungen.');}
+    if(today<start)target=start;
+    else if(today>end)target=end;
     const idx=nearestVisibleIndex(target);
-    timelineWrap.scrollLeft=Math.max(0,idx*cellWidth-timelineWrap.clientWidth/2);
+    const x=idx*cellWidth+cellWidth/2;
+    const maxLeft=Math.max(0,timelineWrap.scrollWidth-timelineWrap.clientWidth);
+    const left=Math.max(0,Math.min(maxLeft,x-timelineWrap.clientWidth/2));
+    timelineWrap.scrollTo({left,behavior:'smooth'});
+    toast(target===today?'Heute · '+fmtDate(today):'Projektzeitraum · '+fmtDate(target));
   };
   $('#exportJsonBtn').onclick=exportJson;
   $('#exportCsvBtn').onclick=exportCsv;
