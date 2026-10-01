@@ -56,6 +56,8 @@
     background:#fff;border-bottom:1px solid var(--line);display:flex;gap:20px;padding:8px 24px;font-size:12px;color:var(--muted);flex-wrap:wrap
   }
   .statusbar strong{color:var(--text)}
+  .status-stand{color:var(--text)}
+  .status-stand strong{font-weight:700}
   .workspace{flex:1;min-height:0;display:flex;position:relative}
   .left{
     width:var(--left-w);min-width:430px;max-width:1200px;background:#fff;border-right:1px solid var(--line-strong);
@@ -374,13 +376,6 @@
 </head>
 <body>
 <div class="app">
-  <header class="topbar">
-    <div class="brand">
-      <div class="site-brand">Titus Bernhard <strong>Architekten</strong></div>
-    </div>
-    <div class="project-top-title">2401 Bernried · Planungsterminplan</div>
-  </header>
-
   <div class="toolbar">
     <button class="btn primary" id="addTaskBtn">＋ Aufgabe</button>
     <button class="btn" id="addMilestoneBtn">◆ Meilenstein</button>
@@ -408,6 +403,7 @@
   </div>
 
   <div class="statusbar">
+    <span class="status-stand">Stand: <strong id="standDateLabel"></strong> · <strong id="standVersionLabel"></strong></span>
     <span>Projektzeitraum LPH 3: <strong id="rangeLabel"></strong></span>
     <span>Vorgänge: <strong id="taskCount"></strong></span>
     <span>Meilensteine: <strong id="milestoneCount"></strong></span>
@@ -497,6 +493,12 @@
         </select>
       </div>
       <div class="field"><label>Vorgänger</label><select id="taskPred"><option value="">— keiner —</option></select></div>
+      <div class="field"><label>Anordnungsbeziehung</label><select id="taskRel">
+        <option value="EA">EA · Ende–Anfang</option>
+        <option value="AA">AA · Anfang–Anfang</option>
+        <option value="EE">EE · Ende–Ende</option>
+        <option value="AE">AE · Anfang–Ende</option>
+      </select></div>
       <div class="field"><label>Status</label>
         <select id="taskStatus"><option>Nicht begonnen</option><option>In Bearbeitung</option><option>Wartet auf Rückmeldung</option><option>Abgeschlossen</option></select>
       </div>
@@ -922,7 +924,7 @@
     });
     drawDependencies(svg);
 
-    const today=iso(new Date());
+    const today=localIsoToday();
     if(visibleDates.includes(today)){
       const x=visibleDates.indexOf(today)*cellWidth+cellWidth/2;
       const line=document.createElement('div');line.className='today-line';line.style.left=x+'px';line.style.height=(totalH+92)+'px';line.style.top='-92px';
@@ -954,19 +956,41 @@
     timelineBody.appendChild(bar);
   }
 
+  function dependencyX(task,side){
+    const idx=nearestVisibleIndex(side==='start'?task.start:task.end);
+    return side==='start'?idx*cellWidth+3:(idx+1)*cellWidth-3;
+  }
+
+  function dependencySides(rel){
+    switch(rel||'EA'){
+      case 'AA': return ['start','start'];
+      case 'EE': return ['end','end'];
+      case 'AE': return ['start','end'];
+      default: return ['end','start'];
+    }
+  }
+
   function drawDependencies(svg){
     const taskRows=new Map();rows.forEach((r,i)=>{if(r.kind==='task')taskRows.set(r.id,i)});
     data.tasks.forEach(t=>{
       if(!t.pred||!taskRows.has(t.id)||!taskRows.has(t.pred))return;
       const p=data.tasks.find(x=>x.id===t.pred);if(!p)return;
-      const pEnd=(nearestVisibleIndex(p.end)+1)*cellWidth-3;
-      const tStart=nearestVisibleIndex(t.start)*cellWidth+3;
+      const [predSide,targetSide]=dependencySides(t.rel);
+      const x1=dependencyX(p,predSide);
+      const x2=dependencyX(t,targetSide);
       const y1=taskRows.get(p.id)*38+19,y2=taskRows.get(t.id)*38+19;
-      const elbow=Math.max(pEnd+12,(pEnd+tStart)/2);
+      const forward=x2>=x1;
+      const elbow=forward?Math.max(x1+12,(x1+x2)/2):Math.max(x1,x2)+16;
+      const tipX=x2;
+      const beforeTip=forward?x2-6:x2+6;
       const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-      path.setAttribute('class','dep-path');path.setAttribute('d',`M ${pEnd} ${y1} H ${elbow} V ${y2} H ${tStart-6}`);
+      path.setAttribute('class','dep-path');
+      path.setAttribute('d',`M ${x1} ${y1} H ${elbow} V ${y2} H ${beforeTip}`);
       const arrow=document.createElementNS('http://www.w3.org/2000/svg','path');
-      arrow.setAttribute('class','dep-arrow');arrow.setAttribute('d',`M ${tStart-6} ${y2-4} L ${tStart} ${y2} L ${tStart-6} ${y2+4} Z`);
+      arrow.setAttribute('class','dep-arrow');
+      arrow.setAttribute('d',forward
+        ?`M ${tipX-6} ${y2-4} L ${tipX} ${y2} L ${tipX-6} ${y2+4} Z`
+        :`M ${tipX+6} ${y2-4} L ${tipX} ${y2} L ${tipX+6} ${y2+4} Z`);
       svg.append(path,arrow);
     });
   }
@@ -1046,6 +1070,8 @@
   }
 
   function renderStats(){
+    $('#standDateLabel').textContent=data.project.standDate?fmtDate(data.project.standDate):'—';
+    $('#standVersionLabel').textContent=data.project.standLabel||'—';
     $('#rangeLabel').textContent=fmtDate(data.project.start)+' – '+fmtDate(data.project.end);
     $('#taskCount').textContent=data.tasks.filter(t=>t.type!=='milestone').length;
     $('#milestoneCount').textContent=data.tasks.filter(t=>t.type==='milestone').length;
@@ -1065,6 +1091,7 @@
     $('#taskProgress').value=t?.progress||0;
     $('#taskCategory').value=t?.category||'arch';
     populatePreds(t?.pred,id);
+    $('#taskRel').value=t?.rel||'EA';
     $('#taskStatus').value=t?.status||'Nicht begonnen';
     $('#taskCritical').checked=!!t?.critical;
     $('#taskNote').value=t?.note||'';
@@ -1087,7 +1114,7 @@
       id,group:$('#taskGroup').value,name:$('#taskName').value.trim(),type,
       start:$('#taskStart').value,end:type==='milestone'?$('#taskStart').value:$('#taskEnd').value,
       owner:$('#taskOwner').value.trim(),progress:Number($('#taskProgress').value)||0,category:$('#taskCategory').value,
-      pred:$('#taskPred').value,status:$('#taskStatus').value,critical:$('#taskCritical').checked,note:$('#taskNote').value.trim()
+      pred:$('#taskPred').value,rel:$('#taskPred').value?$('#taskRel').value:'EA',status:$('#taskStatus').value,critical:$('#taskCritical').checked,note:$('#taskNote').value.trim()
     };
     if(!obj.name||!obj.start||!obj.end){toast('Name und Termine sind erforderlich.');return}
     if(obj.end<obj.start){toast('Der Endtermin liegt vor dem Anfangstermin.');return}
@@ -1099,13 +1126,13 @@
     if(!id)return;
     const t=data.tasks.find(x=>x.id===id);if(!t)return;
     if(!confirm(`„${t.name}“ wirklich löschen?`))return;
-    data.tasks=data.tasks.filter(x=>x.id!==id);data.tasks.forEach(x=>{if(x.pred===id)x.pred=''});
+    data.tasks=data.tasks.filter(x=>x.id!==id);data.tasks.forEach(x=>{if(x.pred===id){x.pred='';x.rel='EA'}});
     taskDialog.close();hideContext();render();toast('Vorgang gelöscht.');
   }
   function duplicateTask(id){
     if(!canEdit)return;
     const t=data.tasks.find(x=>x.id===id);if(!t)return;
-    const c=clone(t);c.id=uid('t');c.name=t.name+' · Kopie';c.start=addDays(t.start,1);c.end=addDays(t.end,1);c.pred='';
+    const c=clone(t);c.id=uid('t');c.name=t.name+' · Kopie';c.start=addDays(t.start,1);c.end=addDays(t.end,1);c.pred='';c.rel='EA';
     data.tasks.push(c);render();toast('Vorgang dupliziert.');
   }
 
@@ -1161,7 +1188,7 @@
 
     $('#printTitleMeta').innerHTML=
       `<strong>Projektzeitraum</strong> ${fmtDate(data.project.start)} – ${fmtDate(data.project.end)}<br>`+
-      `<strong>Externe Abgabe</strong> ${fmtDate(data.project.end)} · <strong>Stand</strong> ${new Date().toLocaleDateString('de-DE')}`;
+      `<strong>Externe Abgabe</strong> ${fmtDate(data.project.end)} · <strong>Stand</strong> ${data.project.standDate?fmtDate(data.project.standDate):'—'} · ${esc(data.project.standLabel||'')}`;
 
     $('#printFooterState').textContent=
       `${data.tasks.filter(t=>t.type!=='milestone').length} Vorgänge · `+
@@ -1293,16 +1320,24 @@
       const predecessor=data.tasks.find(item=>item.id===task.pred);
       if(!predecessor)return;
 
+      const relation=task.rel||'EA';
+      const [predSide,targetSide]=dependencySides(relation);
+      const predDate=predSide==='start'?predecessor.start:predecessor.end;
+      const taskDate=targetSide==='start'?task.start:task.end;
+      const predIndex=indexForDate(predDate);
+      const taskIndex=indexForDate(taskDate);
+      const x1=predSide==='start'?predIndex*dayWidth:(predIndex+1)*dayWidth;
+      const x2=targetSide==='start'?taskIndex*dayWidth:(taskIndex+1)*dayWidth;
       const predRow=rowByTask.get(predecessor.id);
       const taskRow=rowByTask.get(task.id);
-      const x1=(indexForDate(predecessor.end)+1)*dayWidth;
-      const x2=indexForDate(task.start)*dayWidth;
       const y1=predRow*rowHeight+rowHeight/2;
       const y2=taskRow*rowHeight+rowHeight/2;
-      const elbow=Math.max(x1+7,(x1+x2)/2);
+      const forward=x2>=x1;
+      const elbow=forward?Math.max(x1+7,(x1+x2)/2):Math.max(x1,x2)+8;
+      const endX=forward?x2-2:x2+2;
 
       append('path',{
-        d:`M ${x1} ${y1} H ${elbow} V ${y2} H ${Math.max(x2-2,elbow)}`,
+        d:`M ${x1} ${y1} H ${elbow} V ${y2} H ${endX}`,
         fill:'none',
         stroke:'#7b8490',
         'stroke-width':1,
@@ -1400,7 +1435,7 @@
       }
     });
 
-    const today=iso(new Date());
+    const today=localIsoToday();
     const todayIndex=printDates.indexOf(today);
     if(todayIndex>=0){
       const x=(todayIndex+.5)*dayWidth;
