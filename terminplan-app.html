@@ -1597,7 +1597,8 @@
   $('#jsonFile').onchange=e=>e.target.files[0]&&importJson(e.target.files[0]);
   $('#printBtn').onclick=()=>{
     buildPrintSheet();
-    requestAnimationFrame(()=>window.print());
+    window.focus();
+    window.print();
   };
   window.addEventListener('beforeprint',buildPrintSheet);
   $('#resetBtn').onclick=()=>{
