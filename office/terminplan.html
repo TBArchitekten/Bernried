@@ -368,7 +368,7 @@
   body.read-only #addMilestoneBtn,
   body.read-only #addGroupBtn,
   body.read-only #importJsonBtn,
-  body.read-only #resetBtn,
+  body.read-only #saveNowBtn,
   body.read-only #taskDialog,
   body.read-only #groupDialog,
   body.read-only #contextMenu,
@@ -377,7 +377,7 @@
   body.read-only .milestone,
   body.read-only .duration-edit,
   body.read-only .handle{pointer-events:none!important}
-#resetBtn{display:none!important}
+
 
 .office-plan-head{height:50px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 18px;border-bottom:1px solid var(--line);background:#fff;font-size:12px}
 .office-plan-head a{color:var(--text);text-decoration:none}
@@ -412,7 +412,7 @@ body.read-only .editor-only{display:none!important}
     <button class="btn" id="importJsonBtn">JSON importieren</button>
     <input type="file" id="jsonFile" accept=".json,application/json" hidden />
     <button class="btn" id="printBtn">Drucken / PDF</button>
-    <button class="btn" id="resetBtn">Ausgangsstand</button>
+    <button class="btn editor-only" id="saveNowBtn" type="button">Jetzt speichern</button>
     <div class="legend">
       <span><label class="swatch-label"><input class="color-picker" type="color" id="color-arch" title="Farbe Architektur"><i class="dot" id="legend-dot-arch"></i></label>Architektur</span>
       <span><label class="swatch-label"><input class="color-picker" type="color" id="color-fach" title="Farbe Fachplanung"><i class="dot" id="legend-dot-fach"></i></label>Fachplanung</span>
@@ -568,7 +568,7 @@ body.read-only .editor-only{display:none!important}
   const params=new URLSearchParams(location.search);
   const PLAN_ID=params.get('id');
   const TEMPLATE_ID=params.get('template');
-  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'tba-office-auth-v1',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const initialData={project:{name:'Terminplan',start:'2027-01-04',end:'2027-05-28',standDate:'2027-01-04',standLabel:'Muster'},groups:[],tasks:[]};
   let data = initialData;
   let zoom = 'week';
@@ -600,6 +600,10 @@ body.read-only .editor-only{display:none!important}
   let canEdit=false;
   let remoteReady=false;
   let saveTimer=null;
+  let lastSavedSignature=null;
+  let pendingSave=null;
+  let inFlightSave=null;
+  let saveFailed=false;
 
   function loadData(){return clone(initialData)}
 
@@ -615,19 +619,53 @@ body.read-only .editor-only{display:none!important}
       :(phase==='LPH5'?'Ausführungsplanung · Koordination Fachplanung · Planläufe · Dokumentation':'Entwurfsplanung · Koordination Fachplanung · Kostenberechnung · Abschluss');
   }
 
+  function setSaveStatus(message){
+    const el=$('#saveState');
+    if(el)el.textContent=message;
+  }
   function saveData(){
     if(!remoteReady||!canEdit||!PLAN_ID)return;
+    const signature=JSON.stringify(data);
+    if(signature===lastSavedSignature&&!pendingSave&&!inFlightSave)return;
+    if(signature===pendingSave?.signature)return;
+    if(signature===inFlightSave?.signature&&!pendingSave)return;
+    pendingSave={signature,state:clone(data)};
+    saveFailed=false;
     clearTimeout(saveTimer);
-    const saveState=$('#saveState');
-    if(saveState)saveState.textContent='wird gespeichert …';
-    const snapshot=clone(data);
-    saveTimer=setTimeout(async()=>{
-      const {error}=await sb.from('office_terminplan_instances').update({
-        state:snapshot,
+    setSaveStatus('Änderungen ungespeichert');
+    saveTimer=setTimeout(()=>{void flushSave();},450);
+  }
+  async function flushSave(){
+    if(inFlightSave||!pendingSave||!canEdit||!PLAN_ID)return;
+    clearTimeout(saveTimer);
+    saveTimer=null;
+    const batch=pendingSave;
+    pendingSave=null;
+    if(batch.signature===lastSavedSignature){
+      setSaveStatus('gespeichert');
+      return;
+    }
+    inFlightSave=batch;
+    setSaveStatus('wird gespeichert …');
+    try{
+      const {data:updated,error}=await sb.from('office_terminplan_instances').update({
+        state:batch.state,
         updated_at:new Date().toISOString()
-      }).eq('id',PLAN_ID);
-      if(saveState)saveState.textContent=error?'Speichern fehlgeschlagen':'gespeichert · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    },450);
+      }).eq('id',PLAN_ID).select('id');
+      if(error)throw error;
+      if(!updated?.length)throw new Error('Update did not affect a Terminplan row');
+      lastSavedSignature=batch.signature;
+      saveFailed=false;
+      if(!pendingSave)setSaveStatus('gespeichert · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}));
+    }catch(error){
+      console.error('Office Terminplan autosave failed',error);
+      if(!pendingSave)pendingSave={signature:JSON.stringify(data),state:clone(data)};
+      saveFailed=true;
+      setSaveStatus('Speichern fehlgeschlagen · erneut versuchen');
+    }finally{
+      inFlightSave=null;
+      if(pendingSave&&!saveFailed)setTimeout(()=>{void flushSave();},0);
+    }
   }
 
   function applyReadOnlyMode(){
@@ -680,6 +718,7 @@ body.read-only .editor-only{display:none!important}
       return;
     }
 
+    lastSavedSignature=JSON.stringify(data);
     remoteReady=true;
     applyReadOnlyMode();
     applyUIState();
@@ -1626,9 +1665,22 @@ body.read-only .editor-only{display:none!important}
     window.print();
   };
   window.addEventListener('beforeprint',buildPrintSheet);
-  $('#resetBtn').onclick=()=>{
-    if(confirm('Den lokal gespeicherten Stand durch den Ausgangsstand ersetzen?')){data=clone(initialData);localStorage.removeItem(STORAGE_KEY);render();toast('Ausgangsstand wiederhergestellt.')}
+  $('#saveNowBtn').onclick=()=>{
+    if(!canEdit)return;
+    const signature=JSON.stringify(data);
+    if(signature!==lastSavedSignature&&signature!==pendingSave?.signature){
+      pendingSave={signature,state:clone(data)};
+    }
+    clearTimeout(saveTimer);
+    saveFailed=false;
+    void flushSave();
   };
+  window.addEventListener('beforeunload',event=>{
+    if(remoteReady&&canEdit&&(pendingSave||inFlightSave||JSON.stringify(data)!==lastSavedSignature)){
+      event.preventDefault();
+      event.returnValue='';
+    }
+  });
   $('#taskType').onchange=e=>{if(e.target.value==='milestone')$('#taskEnd').value=$('#taskStart').value};
   $('#taskStart').onchange=()=>{if($('#taskType').value==='milestone')$('#taskEnd').value=$('#taskStart').value};
   $('#ctxEdit').onclick=()=>{const id=contextId;hideContext();openTask(id)};

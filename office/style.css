@@ -27,6 +27,9 @@ button{border:1px solid var(--line);background:#fff;padding:10px 14px}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.quiet{border:0;background:transparent;padding:5px 0;text-decoration:underline;text-underline-offset:3px}
 .message{min-height:18px;font-size:12px;color:#9f251f}
+.auth-card .auth-link{justify-self:start;font-size:12px}
+.auth-help{font-size:12px;line-height:1.5;color:var(--muted);margin:0}
+button:disabled{cursor:wait;opacity:.6}
 .topbar{height:62px;background:#fff;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 24px}
 .brand{color:var(--text);text-decoration:none}
 .office-title{font-size:13px}

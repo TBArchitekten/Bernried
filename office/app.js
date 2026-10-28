@@ -3,7 +3,7 @@
 
   const SUPABASE_URL='https://mmrteayudgywutghpdev.supabase.co';
   const SUPABASE_KEY='sb_publishable_P4lOIuijwNF7oleGDoeAuQ_7OLJOaGV';
-  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'tba-office-auth-v1',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 
   const $=s=>document.querySelector(s);
   const authView=$('#authView');
@@ -11,6 +11,9 @@
   const loginForm=$('#loginForm');
   const createDialog=$('#createDialog');
   const createForm=$('#createForm');
+  const recoveryForm=$('#recoveryForm');
+  let recoveryMode=false;
+  let creating=false;
   let member=null;
   let user=null;
   let templates=[];
@@ -201,7 +204,7 @@
       password:$('#password').value
     });
     if(error){
-      $('#loginMessage').textContent='Anmeldung nicht möglich. Bitte Zugangsdaten prüfen.';
+      $('#loginMessage').textContent='Anmeldung fehlgeschlagen. Bitte das Passwort Ihres persönlichen TBA-Kontos prüfen (nicht das Bernried-Projektpasswort).';
       return;
     }
     try{await boot(data.session)}
@@ -231,8 +234,17 @@
     const projectStart=$('#projectStart').value;
     if(!projectNumber||!projectName||!projectStart)return;
 
-    const state=cloneStateForProject(tpl.state,projectStart,projectNumber,projectName,phase,tpl.version);
-    const {data,error}=await sb.from('office_terminplan_instances').insert({
+    if(isWeekend(parseDate(projectStart))){
+      $('#createMessage').textContent='Bitte einen Werktag als Projektstart wählen.';
+      return;
+    }
+    if(creating)return;
+    creating=true;
+    const submitBtn=createForm.querySelector('button[type="submit"]');
+    submitBtn.disabled=true;
+    try{
+      const state=cloneStateForProject(tpl.state,projectStart,projectNumber,projectName,phase,tpl.version);
+      const {data,error}=await sb.from('office_terminplan_instances').insert({
       template_id:tpl.id,
       template_version:tpl.version,
       project_number:projectNumber,
@@ -242,18 +254,78 @@
       state,
       source:'template'
     }).select('id').single();
-    if(error){
+      if(error)throw error;
+      location.href='./terminplan.html?id='+encodeURIComponent(data.id);
+    }catch(error){
       console.error(error);
       $('#createMessage').textContent='Terminplan konnte nicht erstellt werden.';
-      return;
+    }finally{
+      creating=false;
+      submitBtn.disabled=false;
     }
-    location.href='./terminplan.html?id='+encodeURIComponent(data.id);
   });
 
-  sb.auth.onAuthStateChange((_event,session)=>setTimeout(()=>boot(session).catch(err=>{
+  $('#resetPasswordBtn').addEventListener('click',async()=>{
+    const email=$('#email').value.trim();
+    if(!email||!$('#email').checkValidity()){
+      $('#loginMessage').textContent='Bitte zuerst Ihre persönliche TBA-E-Mail-Adresse eingeben.';
+      $('#email').focus();
+      return;
+    }
+    const button=$('#resetPasswordBtn');
+    button.disabled=true;
+    $('#loginMessage').textContent='';
+    try{
+      const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+      if(error)throw error;
+      $('#loginMessage').textContent='Wenn das Konto existiert, erhalten Sie eine E-Mail zum Zurücksetzen des Passworts. Bitte auch den Spam-Ordner prüfen.';
+    }catch(error){
+      console.error(error);
+      $('#loginMessage').textContent='Passwort-E-Mail konnte nicht angefordert werden. Bitte die Office-Administration kontaktieren.';
+    }finally{
+      button.disabled=false;
+    }
+  });
+
+  recoveryForm.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const password=$('#newPassword').value;
+    if(password!==$('#confirmPassword').value){
+      $('#recoveryMessage').textContent='Die Passwörter stimmen nicht überein.';
+      return;
+    }
+    const button=recoveryForm.querySelector('button[type="submit"]');
+    button.disabled=true;
+    $('#recoveryMessage').textContent='';
+    const {error}=await sb.auth.updateUser({password});
+    if(error){
+      console.error(error);
+      $('#recoveryMessage').textContent='Passwort konnte nicht gespeichert werden. Bitte den Link erneut öffnen.';
+      button.disabled=false;
+      return;
+    }
+    recoveryMode=false;
+    await sb.auth.signOut();
+    location.replace(location.origin+location.pathname);
+  });
+
+  sb.auth.onAuthStateChange((event,session)=>{
+    if(event==='PASSWORD_RECOVERY'){
+      recoveryMode=true;
+      authView.hidden=false;
+      appView.hidden=true;
+      loginForm.hidden=true;
+      recoveryForm.hidden=false;
+      return;
+    }
+    if(recoveryMode)return;
+    setTimeout(()=>boot(session).catch(err=>{
     console.error(err);
     authView.hidden=false;appView.hidden=true;
-  }),0));
+  }),0);
+  });
 
-  sb.auth.getSession().then(({data})=>boot(data.session)).catch(console.error);
+  sb.auth.getSession().then(({data})=>{
+    if(!recoveryMode)boot(data.session).catch(console.error);
+  }).catch(console.error);
 })();
