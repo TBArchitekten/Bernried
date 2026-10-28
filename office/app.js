@@ -3,7 +3,7 @@
 
   const SUPABASE_URL='https://mmrteayudgywutghpdev.supabase.co';
   const SUPABASE_KEY='sb_publishable_P4lOIuijwNF7oleGDoeAuQ_7OLJOaGV';
-  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'tba-office-auth-v1',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 
   const $=s=>document.querySelector(s);
   const authView=$('#authView');
