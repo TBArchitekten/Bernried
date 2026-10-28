@@ -1,0 +1,83 @@
+:root{
+  --bg:#f5f5f2;
+  --panel:#fff;
+  --text:#111;
+  --muted:#6b6f72;
+  --line:#d8d8d2;
+  --line-strong:#b7b9b5;
+  --accent:#18231d;
+  --soft:#efefeb;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;color:var(--text);background:var(--bg)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+.auth-shell{min-height:100vh;display:grid;place-items:center;padding:32px}
+.auth-card{width:min(520px,100%);background:#fff;border:1px solid var(--line);padding:48px}
+.wordmark{font-size:20px}
+.wordmark strong{font-weight:700}
+.eyebrow{margin:28px 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.auth-card h1,.page-head h1{font-size:38px;line-height:1.05;font-weight:400;margin:0}
+.muted,.lead{color:var(--muted);line-height:1.5}
+.auth-card form{display:grid;gap:18px;margin-top:30px}
+label{display:grid;gap:7px;font-size:13px;color:#4c504d}
+input,select{border:1px solid var(--line-strong);background:#fff;padding:12px 13px;min-height:44px}
+button{border:1px solid var(--line);background:#fff;padding:10px 14px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.quiet{border:0;background:transparent;padding:5px 0;text-decoration:underline;text-underline-offset:3px}
+.message{min-height:18px;font-size:12px;color:#9f251f}
+.topbar{height:62px;background:#fff;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 24px}
+.brand{color:var(--text);text-decoration:none}
+.office-title{font-size:13px}
+.top-actions{justify-self:end;display:flex;align-items:center;gap:18px;font-size:12px;color:var(--muted)}
+.shell{display:grid;grid-template-columns:190px minmax(0,1fr);min-height:calc(100vh - 62px)}
+.side{border-right:1px solid var(--line);background:#fff;padding:28px 16px;display:flex;flex-direction:column;gap:5px}
+.nav-item{border:0;background:transparent;text-align:left;padding:10px 12px;color:var(--muted)}
+.nav-item.active{background:var(--soft);color:var(--text)}
+.content{padding:46px clamp(28px,5vw,74px) 70px}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:42px}
+.page-head .eyebrow{margin-top:0}
+.lead{max-width:700px;margin-bottom:0}
+.tool-grid{display:grid;grid-template-columns:minmax(0,760px);gap:16px}
+.tool-card{display:grid;grid-template-columns:48px 1fr auto;gap:20px;align-items:start;text-align:left;padding:26px;background:#fff;border:1px solid var(--line)}
+.tool-card:hover{border-color:#777}
+.tool-index{font-size:12px;color:var(--muted);padding-top:5px}
+.tool-card h2{font-size:22px;font-weight:400;margin:0 0 7px}
+.tool-card p{color:var(--muted);line-height:1.5;margin:0}
+.arrow{font-size:24px}
+.section{margin-top:38px}
+.section-title{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px}
+.section-title h2{font-size:17px;font-weight:500;margin:0}
+.section-title span{font-size:11px;color:var(--muted)}
+.template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.template-card{background:#fff;border:1px solid var(--line);padding:22px;display:grid;gap:18px}
+.template-card .top{display:flex;justify-content:space-between;gap:16px}
+.template-card h3{font-size:22px;font-weight:400;margin:0}
+.badge{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.template-card p{margin:0;color:var(--muted);line-height:1.45;font-size:13px}
+.template-actions{display:flex;gap:8px}
+.plan-list{display:grid;border-top:1px solid var(--line)}
+.plan-row{display:grid;grid-template-columns:110px minmax(220px,1fr) 110px 130px auto;gap:18px;align-items:center;padding:15px 4px;border-bottom:1px solid var(--line);background:transparent}
+.plan-row:hover{background:#f0f0ec}
+.plan-row .number,.plan-row .phase,.plan-row .date{font-size:12px;color:var(--muted)}
+.plan-row .name{font-size:14px}
+.plan-row button{justify-self:end}
+.empty{padding:26px 0;color:var(--muted);font-size:13px}
+dialog{width:min(720px,calc(100vw - 40px));border:1px solid var(--line);padding:0}
+dialog::backdrop{background:rgba(0,0,0,.18)}
+#createForm{padding:28px}
+.dialog-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}
+.dialog-head .eyebrow{margin:0 0 7px}
+.dialog-head h2{margin:0;font-size:26px;font-weight:400}
+.icon-btn{border:0;font-size:24px;background:transparent;padding:0 4px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:28px}
+.dialog-note{font-size:12px;color:var(--muted);line-height:1.5;margin:20px 0 0}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}
+@media(max-width:820px){
+  .topbar{grid-template-columns:1fr auto}.office-title{display:none}
+  .shell{grid-template-columns:1fr}.side{border-right:0;border-bottom:1px solid var(--line);flex-direction:row;padding:10px 16px}
+  .content{padding:30px 20px}.template-grid{grid-template-columns:1fr}
+  .plan-row{grid-template-columns:90px 1fr auto}.plan-row .phase,.plan-row .date{display:none}
+  .form-grid{grid-template-columns:1fr}.auth-card{padding:30px 24px}
+}

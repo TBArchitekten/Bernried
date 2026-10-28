@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Titus Bernhard Architekten · Office</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="authView" class="auth-shell">
+    <section class="auth-card">
+      <div class="wordmark">Titus Bernhard <strong>Architekten</strong></div>
+      <p class="eyebrow">Office</p>
+      <h1>Interne Werkzeuge</h1>
+      <p class="muted">Anmeldung mit dem TBA-Konto.</p>
+      <form id="loginForm">
+        <label>E-Mail<input id="email" type="email" autocomplete="username" required></label>
+        <label>Passwort<input id="password" type="password" autocomplete="current-password" required></label>
+        <div id="loginMessage" class="message" aria-live="polite"></div>
+        <button class="primary" type="submit">Anmelden</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="appView" class="app" hidden>
+    <header class="topbar">
+      <a class="brand" href="./">Titus Bernhard <strong>Architekten</strong></a>
+      <div class="office-title">Office</div>
+      <div class="top-actions">
+        <span id="memberName"></span>
+        <button id="logoutBtn" class="quiet">Abmelden</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <nav class="side">
+        <button class="nav-item active" data-view="tools">Tools</button>
+        <button class="nav-item" data-view="plans">Terminpläne</button>
+      </nav>
+
+      <section class="content">
+        <div id="toolsView" class="view">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">Office Hub</p>
+              <h1>Tools</h1>
+              <p class="lead">Wiederverwendbare Werkzeuge für die Projektarbeit.</p>
+            </div>
+          </div>
+
+          <div class="tool-grid">
+            <button class="tool-card" id="openTerminplanTool">
+              <div class="tool-index">01</div>
+              <div>
+                <h2>Terminplan</h2>
+                <p>Muster für LPH 3 und LPH 5 auswählen, projektbezogen instanziieren und fortschreiben.</p>
+              </div>
+              <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="plansView" class="view" hidden>
+          <div class="page-head plans-head">
+            <div>
+              <p class="eyebrow">Tool 01</p>
+              <h1>Terminplan</h1>
+              <p class="lead">Muster auswählen oder bestehenden Projektterminplan öffnen.</p>
+            </div>
+            <button id="newPlanBtn" class="primary">+ Neuer Terminplan</button>
+          </div>
+
+          <section class="section">
+            <div class="section-title">
+              <h2>Muster</h2>
+              <span>Office Standard</span>
+            </div>
+            <div id="templateGrid" class="template-grid"></div>
+          </section>
+
+          <section class="section">
+            <div class="section-title">
+              <h2>Projektterminpläne</h2>
+              <span id="planCount">0</span>
+            </div>
+            <div id="planList" class="plan-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="createDialog">
+    <form method="dialog" id="createForm">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">Terminplan</p>
+          <h2>Neuen Projektterminplan erstellen</h2>
+        </div>
+        <button value="cancel" class="icon-btn" aria-label="Schließen">×</button>
+      </div>
+      <div class="form-grid">
+        <label>Leistungsphase
+          <select id="phase" required>
+            <option value="LPH3">LPH 3 · Entwurfsplanung</option>
+            <option value="LPH5">LPH 5 · Ausführungsplanung</option>
+          </select>
+        </label>
+        <label>Projektstart
+          <input id="projectStart" type="date" required>
+        </label>
+        <label>Projektnummer
+          <input id="projectNumber" type="text" placeholder="z. B. 2701" required>
+        </label>
+        <label>Projektname
+          <input id="projectName" type="text" placeholder="Projektname" required>
+        </label>
+      </div>
+      <p class="dialog-note">Der Muster-Terminplan bleibt unverändert. Es wird eine eigenständige Projektkopie angelegt.</p>
+      <div id="createMessage" class="message" aria-live="polite"></div>
+      <div class="dialog-actions">
+        <button value="cancel" type="button" id="cancelCreate">Abbrechen</button>
+        <button class="primary" type="submit">Terminplan erstellen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="./app.js"></script>
+</body>
+</html>
