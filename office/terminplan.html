@@ -1550,7 +1550,8 @@ body.read-only .editor-only{display:none!important}
   }
 
   function exportJson(){
-    download('2401_Bernried_LPH3_Terminplan.json',JSON.stringify(data,null,2),'application/json');
+    const stem=[data.project.projectNumber,data.project.projectName,data.project.phase,'Terminplan'].filter(Boolean).join('_').replace(/[^a-zA-Z0-9_-]+/g,'_');
+    download(stem+'.json',JSON.stringify(data,null,2),'application/json');
   }
   function exportCsv(){
     const header=['PSP','Vorgang','Typ','Sammelvorgang','Verantwortlich','Anfang','Ende','Dauer_AT','Fortschritt','Status','Vorgänger','Kritisch','Notiz'];
@@ -1562,7 +1563,8 @@ body.read-only .editor-only{display:none!important}
       });
     });
     const csv=lines.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');
-    download('2401_Bernried_LPH3_Terminplan.csv','\ufeff'+csv,'text/csv;charset=utf-8');
+    const stem=[data.project.projectNumber,data.project.projectName,data.project.phase,'Terminplan'].filter(Boolean).join('_').replace(/[^a-zA-Z0-9_-]+/g,'_');
+    download(stem+'.csv','\ufeff'+csv,'text/csv;charset=utf-8');
   }
   function download(name,content,type){
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href);
