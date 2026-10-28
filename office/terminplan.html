@@ -568,7 +568,7 @@ body.read-only .editor-only{display:none!important}
   const params=new URLSearchParams(location.search);
   const PLAN_ID=params.get('id');
   const TEMPLATE_ID=params.get('template');
-  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{storageKey:'tba-office-auth-v1',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   const initialData={project:{name:'Terminplan',start:'2027-01-04',end:'2027-05-28',standDate:'2027-01-04',standLabel:'Muster'},groups:[],tasks:[]};
   let data = initialData;
   let zoom = 'week';
