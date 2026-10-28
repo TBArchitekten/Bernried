@@ -13,12 +13,21 @@
       <div class="wordmark">Titus Bernhard <strong>Architekten</strong></div>
       <p class="eyebrow">Office</p>
       <h1>Interne Werkzeuge</h1>
-      <p class="muted">Anmeldung mit dem TBA-Konto.</p>
+      <p class="muted">Anmeldung mit Ihrem persönlichen TBA-Office-Konto.</p>
       <form id="loginForm">
         <label>E-Mail<input id="email" type="email" autocomplete="username" required></label>
         <label>Passwort<input id="password" type="password" autocomplete="current-password" required></label>
         <div id="loginMessage" class="message" aria-live="polite"></div>
         <button class="primary" type="submit">Anmelden</button>
+        <button id="resetPasswordBtn" class="quiet auth-link" type="button">Passwort vergessen?</button>
+        <p class="auth-help">Der gemeinsame Bernried-Projektzugang ist kein Office-Konto. Bitte verwenden Sie Ihre persönliche TBA-E-Mail-Adresse und das dazugehörige Passwort.</p>
+      </form>
+      <form id="recoveryForm" hidden>
+        <p class="muted">Legen Sie ein neues Passwort für Ihr persönliches Office-Konto fest.</p>
+        <label>Neues Passwort<input id="newPassword" type="password" autocomplete="new-password" minlength="12" required></label>
+        <label>Passwort bestätigen<input id="confirmPassword" type="password" autocomplete="new-password" minlength="12" required></label>
+        <div id="recoveryMessage" class="message" aria-live="polite"></div>
+        <button class="primary" type="submit">Passwort speichern</button>
       </form>
     </section>
   </div>
